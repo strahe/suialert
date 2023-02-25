@@ -1,0 +1,9 @@
+debug = true
+
+[subscribe]
+event_types = ["MoveEvent", "Publish", "CoinBalanceChange", "TransferObject", "NewObject", "EpochChange", "Checkpoint"]
+
+[bots]
+
+[bots.discord]
+token = "discord bot token"
