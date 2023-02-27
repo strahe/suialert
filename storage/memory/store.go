@@ -2,8 +2,6 @@ package memory
 
 import (
 	"context"
-
-	"github.com/strahe/suialert/store"
 )
 
 // Client is the memory store client
@@ -27,7 +25,7 @@ func (c *Client) Get(_ context.Context, key string) ([]byte, error) {
 	if val, ok := c.data[key]; ok {
 		return val, nil
 	}
-	return nil, store.ErrNotFound
+	return nil, storage.ErrNotFound
 }
 
 // Put stores the key/value in the memory store

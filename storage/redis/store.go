@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/strahe/suialert/store"
 )
 
 // Client is a redis store client.
@@ -47,7 +46,7 @@ func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
 	v, err := c.rdb.Get(ctx, key).Bytes()
 	if err != nil {
 		if err == redis.Nil {
-			return nil, store.ErrNotFound
+			return nil, storage.ErrNotFound
 		}
 	}
 	return v, err
