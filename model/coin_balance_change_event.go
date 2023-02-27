@@ -1,6 +1,9 @@
 package model
 
-import "github.com/pgcontrib/bigint"
+import (
+	"context"
+	"github.com/pgcontrib/bigint"
+)
 
 const (
 	CoinBalanceChangeGas CoinBalanceChangeType = iota
@@ -11,10 +14,11 @@ const (
 type CoinBalanceChangeType int
 
 type CoinBalanceChangeEvent struct {
-	ID EventID `json:"id" pg:"event_id, notnull"`
+	TransactionDigest string `json:"tx_digest" pg:"tx_digest,notnull"`
+	EventSeq          int64  `json:"event_seq"  pg:"event_seq,notnull"`
 
 	//UTC timestamp in milliseconds
-	Timestamp uint64 `json:"timestamp" pg:"timestamp, notnull"`
+	Timestamp uint64 `json:"timestamp" pg:"timestamp,pk,notnull"`
 
 	// Package ID if available
 	PackageID string `json:"package_id" pg:"package_id,"`
@@ -37,4 +41,8 @@ type CoinBalanceChangeEvent struct {
 	Version int64 `json:"version" pg:"version,"`
 
 	Amount bigint.Bigint `json:"amount" pg:"amount,"`
+}
+
+func (e *CoinBalanceChangeEvent) Persist(ctx context.Context, s StorageBatch) error {
+	return s.PersistModel(ctx, e)
 }

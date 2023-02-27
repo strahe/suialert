@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/strahe/suialert/storage"
 	"os"
 	"os/signal"
 	"syscall"
@@ -45,6 +46,16 @@ func (c *command) initRunCmd() {
 			}
 
 			defer bot.Close() //nolint:errcheck
+
+			// todo:
+			db, err := storage.NewDatabase(cfg.Database.Postgres)
+			if err != nil {
+				return fmt.Errorf("error creating database: %w", err)
+			}
+			if err := db.Connect(ctx); err != nil {
+				return fmt.Errorf("error connecting to database: %w", err)
+			}
+			defer db.Close() //nolint:errcheck
 
 			hd := handlers.NewEthSubHandler(bot)
 

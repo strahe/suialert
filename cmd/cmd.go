@@ -50,6 +50,7 @@ func newCommand(opts ...option) (c *command, err error) {
 
 	c.initGlobalFlags()
 	c.initRunCmd()
+	c.initMigrateCmd()
 	c.initVersionCmd()
 
 	return c, nil

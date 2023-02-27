@@ -17,6 +17,10 @@ type PatchList struct {
 	pm map[int]patch
 }
 
+func GetPatches(cfg Config) (*migrations.Collection, error) {
+	return patches.Collection(cfg)
+}
+
 var patches = NewPatchList()
 
 func NewPatchList() PatchList { // nolint: revive

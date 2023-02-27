@@ -1,7 +1,10 @@
 package model
 
+import "context"
+
 type MoveEvent struct {
-	ID EventID `json:"id" pg:"event_id, notnull"`
+	TransactionDigest string `json:"tx_digest" pg:"tx_digest,notnull"`
+	EventSeq          int64  `json:"event_seq"  pg:"event_seq,notnull"`
 
 	//UTC timestamp in milliseconds
 	Timestamp uint64 `json:"timestamp" pg:"timestamp, notnull"`
@@ -19,4 +22,8 @@ type MoveEvent struct {
 
 	//Contents for MoveEvent
 	BCS []byte `json:"bcs" pg:"bcs,"`
+}
+
+func (e *MoveEvent) Persist(ctx context.Context, s StorageBatch) error {
+	return s.PersistModel(ctx, e)
 }

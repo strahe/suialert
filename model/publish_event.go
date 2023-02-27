@@ -1,7 +1,10 @@
 package model
 
+import "context"
+
 type PublishEvent struct {
-	ID EventID `json:"id" pg:"event_id, notnull"`
+	TransactionDigest string `json:"tx_digest" pg:"tx_digest,notnull"`
+	EventSeq          int64  `json:"event_seq"  pg:"event_seq,notnull"`
 
 	//UTC timestamp in milliseconds
 	Timestamp uint64 `json:"timestamp" pg:"timestamp, notnull"`
@@ -17,4 +20,8 @@ type PublishEvent struct {
 
 	//
 	Digest string `json:"digest" pg:"digest,"`
+}
+
+func (e *PublishEvent) Persist(ctx context.Context, s StorageBatch) error {
+	return s.PersistModel(ctx, e)
 }
