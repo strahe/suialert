@@ -11,3 +11,4 @@ token = "discord bot token"
 [database]
 [database.postgres]
 url = "postgres://dbadmin:password@localhost:5432/db"
+upsert = false

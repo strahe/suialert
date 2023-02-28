@@ -3,14 +3,15 @@ package storage
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"sort"
+	"strings"
+
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
 	"github.com/strahe/suialert/config"
 	"github.com/strahe/suialert/model"
 	"github.com/strahe/suialert/model/schema"
-	"reflect"
-	"sort"
-	"strings"
 )
 
 var models = []interface{}{
@@ -43,6 +44,7 @@ func NewDatabase(cfg config.PostgresConfig) (*Database, error) {
 		schemaConfig: schema.Config{
 			SchemaName: cfg.SchemaName,
 		},
+		Upsert: cfg.Upsert,
 	}, nil
 }
 
@@ -50,12 +52,6 @@ func (d *Database) Connect(ctx context.Context) error {
 	db, err := connect(ctx, d.opt)
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
-	}
-
-	err = validateDatabaseSchemaVersion(ctx, db, d.SchemaConfig())
-	if err != nil {
-		_ = db.Close() // nolint: errcheck
-		return err
 	}
 
 	d.db = db
@@ -200,8 +196,6 @@ func GenerateUpsertStrings(model interface{}) (string, string) {
 	return conflict.String(), upsert.String()
 }
 
-// MigrateSchema migrates the database schema to a specific version. Note that downgrading a schema to an earlier
-// version is destructive and may result in the loss of data.
 func (d *Database) MigrateSchema(ctx context.Context) error {
 	db, err := connect(ctx, d.opt)
 	if err != nil {
@@ -209,21 +203,11 @@ func (d *Database) MigrateSchema(ctx context.Context) error {
 	}
 	defer db.Close() // nolint: errcheck
 
-	if err := initDatabaseSchema(ctx, db, d.SchemaConfig()); err != nil {
+	if err := initDatabaseSchema(db, d.SchemaConfig()); err != nil {
 		return fmt.Errorf("initializing schema version tables: %w", err)
 	}
 
 	return nil
-}
-
-func tableExists(ctx context.Context, db *pg.DB, schemaName string, tableName string) (bool, error) {
-	var exists bool
-	_, err := db.QueryOneContext(ctx, pg.Scan(&exists), `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema=? AND table_name=?)`, schemaName, tableName)
-	if err != nil {
-		return false, fmt.Errorf("querying table: %v", err)
-	}
-
-	return exists, nil
 }
 
 // createSchema creates database schema for User and Story models.
@@ -235,4 +219,15 @@ func createSchema(db *pg.DB) error {
 		}
 	}
 	return nil
+}
+
+// initDatabaseSchema initializes the version tables for tracking schema version installed in the database
+func initDatabaseSchema(db *pg.DB, cfg schema.Config) error {
+	if cfg.SchemaName != "public" {
+		_, err := db.Exec(`CREATE SCHEMA IF NOT EXISTS ?`, pg.SafeQuery(cfg.SchemaName))
+		if err != nil {
+			return fmt.Errorf("ensure schema exists :%w", err)
+		}
+	}
+	return createSchema(db)
 }

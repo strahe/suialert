@@ -3,10 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/strahe/suialert/storage"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/strahe/suialert/storage"
 
 	"github.com/strahe/suialert/bots/discord"
 
@@ -57,7 +58,7 @@ func (c *command) initRunCmd() {
 			}
 			defer db.Close() //nolint:errcheck
 
-			hd := handlers.NewEthSubHandler(bot)
+			hd := handlers.NewEthSubHandler(bot, db)
 
 			rpcClient, closer, err := client.NewClient(ctx, c.vp.GetString(optionRpcEndpoints), hd)
 			if err != nil {

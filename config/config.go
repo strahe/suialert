@@ -30,4 +30,5 @@ type PostgresConfig struct {
 	URL        string `yaml:"url" json:"url" mapstructure:"url"`
 	PoolSize   int    `yaml:"pool_size" json:"pool_size" mapstructure:"pool_size"`
 	SchemaName string `yaml:"schema_name" json:"schema_name" mapstructure:"schema_name"`
+	Upsert     bool   `yaml:"upsert" json:"upsert" mapstructure:"upsert"`
 }

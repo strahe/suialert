@@ -76,7 +76,7 @@ type Publish struct {
 
 type EventID struct {
 	TxDigest string `json:"txDigest"`
-	EventSeq int    `json:"eventSeq"`
+	EventSeq int64  `json:"eventSeq"`
 }
 
 // CoinBalanceChange Coin balance changing event
@@ -88,12 +88,12 @@ type CoinBalanceChange struct {
 	Owner             Owner  `json:"owner"`
 	CoinType          string `json:"coinType"`
 	CoinObjectId      string `json:"coinObjectId"`
-	Version           int    `json:"version"`
-	Amount            int    `json:"amount"`
+	Version           int64  `json:"version"`
+	Amount            int64  `json:"amount"`
 }
 
 type EventResult struct {
-	Timestamp int64                      `json:"timestamp"`
+	Timestamp uint64                     `json:"timestamp"`
 	TxDigest  string                     `json:"txDigest"`
 	Id        EventID                    `json:"id"`
 	Event     map[string]json.RawMessage `json:"event"`

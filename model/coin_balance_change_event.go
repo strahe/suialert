@@ -5,11 +5,11 @@ import (
 	"github.com/pgcontrib/bigint"
 )
 
-const (
-	CoinBalanceChangeGas CoinBalanceChangeType = iota
-	CoinBalanceChangePay
-	CoinBalanceChangeReceive
-)
+//const (
+//	CoinBalanceChangeGas CoinBalanceChangeType = iota
+//	CoinBalanceChangePay
+//	CoinBalanceChangeReceive
+//)
 
 type CoinBalanceChangeType int
 
@@ -29,7 +29,7 @@ type CoinBalanceChangeEvent struct {
 	// Sender in the event
 	Sender string `json:"sender" pg:"sender,"`
 
-	ChangeType CoinBalanceChangeType `json:"change_type" pg:"change_type,"`
+	ChangeType string `json:"change_type" pg:"change_type,"`
 
 	//Owner in the event
 	Owner string `json:"owner" pg:"owner,"`
@@ -40,7 +40,7 @@ type CoinBalanceChangeEvent struct {
 
 	Version int64 `json:"version" pg:"version,"`
 
-	Amount bigint.Bigint `json:"amount" pg:"amount,"`
+	Amount *bigint.Bigint `json:"amount" pg:"amount,"`
 }
 
 func (e *CoinBalanceChangeEvent) Persist(ctx context.Context, s StorageBatch) error {

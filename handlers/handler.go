@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/strahe/suialert/model"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/strahe/suialert/bots"
 	"github.com/strahe/suialert/types"
@@ -15,14 +17,16 @@ type SubHandler struct {
 	sinks  map[types.SubscriptionID]func(context.Context, *types.Subscription) error
 	lk     sync.Mutex
 
-	bot bots.Bot
+	bot   bots.Bot
+	store model.Storage
 }
 
-func NewEthSubHandler(bot bots.Bot) *SubHandler {
+func NewEthSubHandler(bot bots.Bot, store model.Storage) *SubHandler {
 	return &SubHandler{
 		queued: map[types.SubscriptionID][]types.Subscription{},
 		sinks:  map[client.SubscriptionID]func(context.Context, *types.Subscription) error{},
 		bot:    bot,
+		store:  store,
 	}
 }
 
@@ -66,6 +70,5 @@ func (e *SubHandler) SubscribeEvent(ctx context.Context, r jsonrpc.RawParams) er
 	}
 
 	e.lk.Unlock()
-
 	return sink(ctx, &p) // todo track errors and auto-unsubscribe on rpc conn close?
 }

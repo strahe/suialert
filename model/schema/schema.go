@@ -2,10 +2,11 @@ package schema
 
 import (
 	"fmt"
-	"github.com/go-pg/migrations/v8"
 	"reflect"
 	"strings"
 	"text/template"
+
+	"github.com/go-pg/migrations/v8"
 )
 
 type patch struct {
@@ -87,7 +88,7 @@ func (pl *PatchList) Collection(cfg Config) (*migrations.Collection, error) {
 	}
 
 	coll := migrations.NewCollection(migs...)
-	coll.SetTableName(cfg.SchemaName + ".gopg_migrations")
+	coll.SetTableName(cfg.SchemaName + ".pg_migrations")
 	return coll, nil
 }
 

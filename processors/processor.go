@@ -103,7 +103,8 @@ func (p *Processor) subscribeEventType(ctx context.Context, eventType types.Even
 			return err
 		}
 	default:
-		zap.S().Warnf("no handler for event type: %s", eventType)
+		zap.L().Warn("no handler for event",
+			zap.String("event", eventType.Name()))
 	}
 	return nil
 }

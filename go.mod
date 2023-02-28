@@ -5,6 +5,9 @@ go 1.20
 require (
 	github.com/bwmarrin/discordgo v0.27.0
 	github.com/filecoin-project/go-jsonrpc v0.0.0-00010101000000-000000000000
+	github.com/go-pg/migrations/v8 v8.1.0
+	github.com/go-pg/pg/v10 v10.11.0
+	github.com/pgcontrib/bigint v1.0.2
 	github.com/redis/go-redis/v9 v9.0.2
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
@@ -16,8 +19,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/go-pg/migrations/v8 v8.1.0 // indirect
-	github.com/go-pg/pg/v10 v10.11.0 // indirect
 	github.com/go-pg/zerochecker v0.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
@@ -29,7 +30,6 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
-	github.com/pgcontrib/bigint v1.0.2 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
