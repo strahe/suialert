@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-type Address []byte
+type Address string
 type ObjectId []byte
 type Digest []byte
 

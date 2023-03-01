@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/strahe/suialert/bots"
@@ -17,7 +20,6 @@ import (
 type handler func(context.Context, types.SubscriptionID, *types.EventResult, interface{}) error
 
 type SubHandler struct {
-	queued     map[types.SubscriptionID][]types.Subscription
 	handlers   map[types.SubscriptionID]handler
 	eventNames map[types.SubscriptionID]string
 	lk         sync.Mutex
@@ -27,38 +29,39 @@ type SubHandler struct {
 	storeQueued   map[types.SubscriptionID][]model.Persistable
 	storeQueuedCh chan *eventPersist
 	storeLk       sync.Mutex
-	storeLimit    int
+	storeBatch    int
+	storeLimit    chan struct{}
+	done          chan struct{}
 }
 
-func NewEthSubHandler(ctx context.Context, bot bots.Bot, store model.Storage) *SubHandler {
+func NewEthSubHandler(bot bots.Bot, store model.Storage) *SubHandler {
 	hd := &SubHandler{
-		queued:        map[types.SubscriptionID][]types.Subscription{},
 		handlers:      map[client.SubscriptionID]handler{},
 		eventNames:    map[client.SubscriptionID]string{},
 		bot:           bot,
 		store:         store,
 		storeQueued:   map[client.SubscriptionID][]model.Persistable{},
 		storeQueuedCh: make(chan *eventPersist, 16),
-		storeLimit:    100, // todo: make configurable
+		storeBatch:    100, // todo: make configurable
+		storeLimit:    make(chan struct{}, 2),
+		done:          make(chan struct{}),
 	}
-	go hd.doStore(ctx)
+	go hd.background(context.Background())
 	return hd
 }
 
-func (e *SubHandler) AddSub(ctx context.Context, name string, id client.SubscriptionID, hd handler) error {
+func (e *SubHandler) Close() error {
+	zap.S().Info("closing subscription handler")
+	close(e.done)
+	return e.storeAll(context.TODO())
+}
+
+func (e *SubHandler) AddSub(name string, id client.SubscriptionID, hd handler) {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
-	for _, p := range e.queued[id] {
-		p := p // copy
-		if err := e.processSubscription(ctx, hd, &p); err != nil {
-			return err
-		}
-	}
-	delete(e.queued, id)
 	e.handlers[id] = hd
 	e.eventNames[id] = name
-	return nil
 }
 
 func (e *SubHandler) RemoveSub(id client.SubscriptionID) {
@@ -66,7 +69,6 @@ func (e *SubHandler) RemoveSub(id client.SubscriptionID) {
 	defer e.lk.Unlock()
 
 	delete(e.handlers, id)
-	delete(e.queued, id)
 	delete(e.eventNames, id)
 }
 
@@ -80,11 +82,9 @@ func (e *SubHandler) SubscribeEvent(ctx context.Context, r jsonrpc.RawParams) er
 
 	hd := e.handlers[p.Subscription]
 	if hd == nil {
-		e.queued[p.Subscription] = append(e.queued[p.Subscription], p)
 		e.lk.Unlock()
 		return nil
 	}
-
 	e.lk.Unlock()
 	return e.processSubscription(ctx, hd, &p)
 }
@@ -98,18 +98,6 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 	if err := json.Unmarshal(p.Result, &er); err != nil {
 		return fmt.Errorf("error unmarshalling event result: %s", err.Error())
 	}
-
-	//mk := func(ed interface{}, raw json.RawMessage) handler {
-	//	if err := json.Unmarshal(raw, &ed); err != nil {
-	//		zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
-	//		return func(ctx context.Context, id client.SubscriptionID, result *client.EventResult, i interface{}) error {
-	//			return err
-	//		}
-	//	}
-	//	return func(ctx context.Context, id client.SubscriptionID, result *client.EventResult, i interface{}) error {
-	//		return hd(ctx, p.Subscription, &er, &ed)
-	//	}
-	//}
 
 	for name, raw := range er.Event {
 		var err error
@@ -138,7 +126,12 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 
 		case types.EventTypeCoinBalanceChange.Name():
 			ed := types.CoinBalanceChange{}
+			if err := json.Unmarshal(raw, &ed); err != nil {
+				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
+				return err
+			}
 			err = hd(ctx, p.Subscription, &er, &ed)
+
 		case types.EventTypeDeleteObject.Name():
 			ed := types.DeleteObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
@@ -150,6 +143,7 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 			ed := types.NewObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
+				zap.S().Error(string(raw))
 				return err
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
@@ -177,33 +171,71 @@ type eventPersist struct {
 }
 
 func (e *SubHandler) storeEvent(sid types.SubscriptionID, em model.Persistable) error {
-	e.storeQueuedCh <- &eventPersist{
-		sid: sid,
-		em:  em,
+	e.storeQueuedCh <- &eventPersist{sid: sid, em: em}
+	return nil
+}
+
+func (e *SubHandler) background(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-e.done:
+			// clean queue ?
+			for {
+				select {
+				case <-time.After(time.Second * 3):
+					return
+				case pe := <-e.storeQueuedCh:
+					if err := e.appendAndStore(ctx, pe); err != nil {
+						zap.S().Errorf("error persisting events: %s", err)
+					}
+				}
+			}
+
+		case pe := <-e.storeQueuedCh:
+			if err := e.appendAndStore(ctx, pe); err != nil {
+				zap.S().Errorf("error persisting events: %s", err)
+			}
+		}
+	}
+}
+
+func (e *SubHandler) appendAndStore(ctx context.Context, pe *eventPersist) error {
+	e.storeLk.Lock()
+	defer e.storeLk.Unlock()
+
+	e.storeQueued[pe.sid] = append(e.storeQueued[pe.sid], pe.em)
+
+	if len(e.storeQueued[pe.sid]) >= e.storeBatch {
+		if err := e.store.PersistBatch(ctx, e.storeQueued[pe.sid]...); err != nil {
+			return err
+		}
+		zap.L().Debug("persisting events",
+			zap.String("name", e.eventName(pe.sid)),
+			zap.Int("count", len(e.storeQueued[pe.sid])))
+		e.storeQueued[pe.sid] = []model.Persistable{}
 	}
 	return nil
 }
 
-func (e *SubHandler) doStore(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			// todo: store all left items
-			return
-		case eb := <-e.storeQueuedCh:
-			e.storeLk.Lock()
-			e.storeQueued[eb.sid] = append(e.storeQueued[eb.sid], eb.em)
-			if len(e.storeQueued[eb.sid]) >= e.storeLimit {
-				events := e.storeQueued[eb.sid]
-				zap.S().Debugf("store %d %s events to db", len(events), e.eventName(eb.sid))
-				if err := e.store.PersistBatch(ctx, events...); err != nil {
-					zap.S().Errorf("failed to store %s event to db: %v", e.eventName(eb.sid), err)
-					e.storeLk.Unlock()
-					continue
-				}
-				e.storeQueued[eb.sid] = []model.Persistable{}
-			}
-			e.storeLk.Unlock()
+func (e *SubHandler) storeAll(ctx context.Context) error {
+	e.storeLk.Lock()
+	defer e.storeLk.Unlock()
+
+	var err error
+	for sid, events := range e.storeQueued {
+		if len(events) == 0 {
+			continue
 		}
+		if err := e.store.PersistBatch(ctx, events...); err != nil {
+			err = errors.Wrapf(err, "failed to persist %s event to database", e.eventName(sid))
+			continue
+		}
+		zap.L().Debug("persisting events",
+			zap.String("name", e.eventName(sid)),
+			zap.Int("count", len(events)))
+		e.storeQueued[sid] = nil
 	}
+	return err
 }

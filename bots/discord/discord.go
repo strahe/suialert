@@ -39,6 +39,7 @@ func (b *Bot) Run() error {
 
 // Close closes the bot.
 func (b *Bot) Close() error {
+	zap.S().Info("closing bot")
 	if b.session != nil {
 		return b.session.Close()
 	}

@@ -30,7 +30,7 @@ func (e *SubHandler) storeNewObjectEvent(_ context.Context, sid types.Subscripti
 		PackageID:         ed.PackageID,
 		TransactionModule: ed.TransactionModule,
 		Sender:            ed.Sender,
-		Recipient:         ed.Recipient.AddressOwner,
+		Recipient:         types.OwnerToString(ed.Recipient),
 		ObjectID:          ed.ObjectID,
 		ObjectType:        ed.ObjectType,
 		Version:           ed.Version,

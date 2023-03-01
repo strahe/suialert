@@ -1,14 +1,10 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"unicode"
-)
-
-const (
-	Gas = iota
-	Pay
-	Receive
 )
 
 const (
@@ -81,15 +77,15 @@ type EventID struct {
 
 // CoinBalanceChange Coin balance changing event
 type CoinBalanceChange struct {
-	PackageId         string `json:"packageId"`
-	TransactionModule string `json:"transactionModule"`
-	Sender            string `json:"sender"`
-	ChangeType        string `json:"changeType"`
-	Owner             Owner  `json:"owner"`
-	CoinType          string `json:"coinType"`
-	CoinObjectId      string `json:"coinObjectId"`
-	Version           int64  `json:"version"`
-	Amount            int64  `json:"amount"`
+	PackageId         string       `json:"packageId"`
+	TransactionModule string       `json:"transactionModule"`
+	Sender            string       `json:"sender"`
+	ChangeType        string       `json:"changeType"`
+	Owner             *ObjectOwner `json:"owner"`
+	CoinType          string       `json:"coinType"`
+	CoinObjectId      string       `json:"coinObjectId"`
+	Version           int64        `json:"version"`
+	Amount            int64        `json:"amount"`
 }
 
 type EventResult struct {
@@ -99,8 +95,56 @@ type EventResult struct {
 	Event     map[string]json.RawMessage `json:"event"`
 }
 
-type Owner struct {
-	AddressOwner string `json:"AddressOwner"`
+type ObjectOwner struct {
+	*ObjectOwnerInternal
+	*string
+}
+
+func (o *ObjectOwner) MarshalJSON() ([]byte, error) {
+	if o.string != nil {
+		data, err := json.Marshal(o.string)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	if o.ObjectOwnerInternal != nil {
+		data, err := json.Marshal(o.ObjectOwnerInternal)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	return nil, errors.New("nil value")
+}
+
+func (o *ObjectOwner) UnmarshalJSON(data []byte) error {
+	if bytes.HasPrefix(data, []byte("\"")) {
+		stringData := string(data[1 : len(data)-1])
+		o.string = &stringData
+		return nil
+	}
+	if bytes.HasPrefix(data, []byte("{")) {
+		oOI := ObjectOwnerInternal{}
+		err := json.Unmarshal(data, &oOI)
+		if err != nil {
+			return err
+		}
+		o.ObjectOwnerInternal = &oOI
+		return nil
+	}
+	return errors.New("value not json")
+}
+
+func OwnerToString(o *ObjectOwner) string {
+	if o == nil {
+		return ""
+	}
+	b, err := json.Marshal(o)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 // EpochChange Epoch change
@@ -116,13 +160,13 @@ type Checkpoint struct {
 // TransferObject Object level event
 // Transfer objects to new address / wrap in another object
 type TransferObject struct {
-	PackageID         string `json:"package_id"`
-	TransactionModule string `json:"transaction_module"`
-	Sender            string `json:"sender"`
-	Recipient         Owner  `json:"recipient"`
-	ObjectType        string `json:"object_type"`
-	ObjectID          string `json:"object_id"`
-	Version           int64  `json:"version"`
+	PackageID         string       `json:"package_id"`
+	TransactionModule string       `json:"transaction_module"`
+	Sender            string       `json:"sender"`
+	Recipient         *ObjectOwner `json:"recipient"`
+	ObjectType        string       `json:"object_type"`
+	ObjectID          string       `json:"object_id"`
+	Version           int64        `json:"version"`
 }
 
 // MutateObject Object level event
@@ -147,11 +191,11 @@ type DeleteObject struct {
 
 // NewObject object creation
 type NewObject struct {
-	PackageID         string `json:"package_id"`
-	TransactionModule string `json:"transaction_module"`
-	Sender            string `json:"sender"`
-	Recipient         Owner  `json:"recipient"`
-	ObjectType        string `json:"object_type"`
-	ObjectID          string `json:"object_id"`
-	Version           int64  `json:"version"`
+	PackageID         string       `json:"package_id"`
+	TransactionModule string       `json:"transaction_module"`
+	Sender            string       `json:"sender"`
+	Recipient         *ObjectOwner `json:"recipient"`
+	ObjectType        string       `json:"object_type"`
+	ObjectID          string       `json:"object_id"`
+	Version           int64        `json:"version"`
 }

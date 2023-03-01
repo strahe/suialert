@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
 	"github.com/strahe/suialert/config"
@@ -61,7 +63,6 @@ func (d *Database) Connect(ctx context.Context) error {
 
 func connect(ctx context.Context, opt *pg.Options) (*pg.DB, error) {
 	db := pg.Connect(opt)
-	db = db.WithContext(ctx)
 
 	if err := db.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("ping database: %w", err)
@@ -82,6 +83,7 @@ func (d *Database) IsConnected(ctx context.Context) bool {
 }
 
 func (d *Database) Close() error {
+	zap.S().Info("closing database")
 	err := d.db.Close()
 	d.db = nil
 	return err

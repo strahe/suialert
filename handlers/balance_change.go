@@ -35,7 +35,7 @@ func (e *SubHandler) storeBalanceChangeEvent(_ context.Context, sid types.Subscr
 		TransactionModule: ed.TransactionModule,
 		Sender:            ed.Sender,
 		ChangeType:        ed.ChangeType,
-		Owner:             ed.Owner.AddressOwner,
+		Owner:             types.OwnerToString(ed.Owner),
 		CoinType:          ed.CoinType,
 		CoinObjectID:      ed.CoinObjectId,
 		Version:           ed.Version,

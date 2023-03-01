@@ -36,18 +36,6 @@ func (c *command) initRunCmd() {
 			if err := c.vp.Unmarshal(&cfg); err != nil {
 				return fmt.Errorf("error reading config: %w", err)
 			}
-
-			// todo: check if the bot is enabled
-			bot, err := discord.New(cfg.Bots.Discord)
-			if err != nil {
-				return fmt.Errorf("error creating discord bot: %w", err)
-			}
-			if err := bot.Run(); err != nil {
-				return fmt.Errorf("error starting discord bot: %w", err)
-			}
-
-			defer bot.Close() //nolint:errcheck
-
 			// todo:
 			db, err := storage.NewDatabase(cfg.Database.Postgres)
 			if err != nil {
@@ -58,19 +46,47 @@ func (c *command) initRunCmd() {
 			}
 			defer db.Close() //nolint:errcheck
 
-			hd := handlers.NewEthSubHandler(ctx, bot, db)
+			// todo: check if the bot is enabled
+			bot, err := discord.New(cfg.Bots.Discord)
+			if err != nil {
+				return fmt.Errorf("error creating discord bot: %w", err)
+			}
+			if err := bot.Run(); err != nil {
+				return fmt.Errorf("error starting discord bot: %w", err)
+			}
+
+			defer func() {
+				if err := bot.Close(); err != nil {
+					zap.S().Errorf("error closeing discord bot: %v", err)
+				}
+			}()
+
+			hd := handlers.NewEthSubHandler(bot, db)
+			defer func() {
+				if err := hd.Close(); err != nil {
+					zap.S().Errorf("error closing handlers: %v", err)
+				}
+			}()
 
 			rpcClient, closer, err := client.NewClient(ctx, c.vp.GetString(optionRpcEndpoints), hd)
 			if err != nil {
 				return fmt.Errorf("failed to create rpc client: %w", err)
 			}
-			defer closer()
+			defer func() {
+				zap.S().Infof("closing RPC client")
+				closer()
+			}()
 
 			p, err := processors.NewProcessor(&cfg, rpcClient, hd)
 			if err != nil {
 				return err
 			}
-
+			defer func() {
+				zap.S().Infof("closing processor")
+				if err := p.Close(); err != nil {
+					zap.S().Errorf("error closing processor: %v", err)
+				}
+			}()
 			sigChan := make(chan os.Signal, 2)
 			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 			go func() {
@@ -81,9 +97,8 @@ func (c *command) initRunCmd() {
 			}()
 
 			<-sigChan
-
 			zap.S().Infof("Shutting down %s process", build.AppName)
-			return p.Stop()
+			return nil
 		},
 	}
 	c.setNodeFlags(cmd)
