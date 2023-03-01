@@ -640,7 +640,6 @@ func (c *client) makeRpcFunc(f reflect.StructField) (reflect.Value, error) {
 	if tag, ok := f.Tag.Lookup(ProxyTagRPCMethod); ok {
 		name = tag
 	}
-	fmt.Println(name)
 	fun := &rpcFunc{
 		client: c,
 		ftyp:   ftyp,

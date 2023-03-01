@@ -58,7 +58,7 @@ func (c *command) initRunCmd() {
 			}
 			defer db.Close() //nolint:errcheck
 
-			hd := handlers.NewEthSubHandler(bot, db)
+			hd := handlers.NewEthSubHandler(ctx, bot, db)
 
 			rpcClient, closer, err := client.NewClient(ctx, c.vp.GetString(optionRpcEndpoints), hd)
 			if err != nil {
@@ -71,14 +71,15 @@ func (c *command) initRunCmd() {
 				return err
 			}
 
+			sigChan := make(chan os.Signal, 2)
+			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 			go func() {
 				if err := p.Run(ctx); err != nil {
 					zap.S().Errorf("error: %v", err)
+					sigChan <- syscall.SIGTERM
 				}
 			}()
 
-			sigChan := make(chan os.Signal, 2)
-			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 			<-sigChan
 
 			zap.S().Infof("Shutting down %s process", build.AppName)

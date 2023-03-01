@@ -4,12 +4,16 @@ type Config struct {
 	// Enable Debug model
 	Debug bool `yaml:"debug" json:"debug" mapstructure:"debug"`
 
-	// Event type to subscribe
-	EventTypes []string `yaml:"event_types" json:"event_types" mapstructure:"event_types"`
+	Subscribe SubscribeConfig `yaml:"subscribe" json:"subscribe" mapstructure:"subscribe"`
 
 	Bots BotsConfig `yaml:"bots" json:"bots" mapstructure:"bots"`
 
 	Database DatabaseConfig `yaml:"database" json:"database" mapstructure:"database"`
+}
+
+type SubscribeConfig struct {
+	// Event type to subscribe
+	EventTypes []string `yaml:"event_types" json:"event_types" mapstructure:"event_types"`
 }
 
 type BotsConfig struct {

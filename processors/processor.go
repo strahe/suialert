@@ -46,7 +46,7 @@ func (p *Processor) Stop() error {
 }
 
 func (p *Processor) subscribeEvents(ctx context.Context) error {
-	for _, event := range p.cfg.EventTypes {
+	for _, event := range p.cfg.Subscribe.EventTypes {
 		zap.S().Infof("subscribing to event: %s", event)
 		if err := p.subscribeEventType(ctx, types.EventType(event)); err != nil {
 			zap.S().Errorf("failed to subscribe event type %s: %v", event, err)
@@ -61,15 +61,15 @@ func (p *Processor) unsubscribeEvents(ctx context.Context) error {
 	defer p.lk.Unlock()
 
 	for event, id := range p.subIDs {
-		zap.S().Infof("unsubscribing from event: %s", event)
+		zap.S().Infof("unsubscribing from event: %s, %d", event, id)
 		if ok, err := p.rpcClient.UnsubscribeEvent(ctx, id); err != nil {
-			zap.S().Errorf("failed to unsubscribe event type %s: %v", event, err)
+			zap.S().Errorf("failed to unsubscribe event type %s: %s", event, err)
 			return err
 		} else if !ok {
-			zap.S().Errorf("failed to unsubscribe event type %s", event)
+			zap.S().Errorf("failed to unsubscribe event type %s, %d", event, id)
 		} else {
 			delete(p.subIDs, event)
-			zap.S().Infof("unsubscribed from event: %s", event)
+			zap.S().Infof("unsubscribed from event: %s, %d", event, id)
 		}
 	}
 	return nil
@@ -81,8 +81,8 @@ func (p *Processor) subscribeEventType(ctx context.Context, eventType types.Even
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
-	if _, ok := p.subIDs[eventType]; ok {
-		zap.S().Infof("already subscribed to event type: %s", eventType)
+	if sid, ok := p.subIDs[eventType]; ok {
+		zap.S().Infof("already subscribed to event type %s: %d", eventType.Name(), sid)
 		return nil
 	}
 
@@ -91,20 +91,29 @@ func (p *Processor) subscribeEventType(ctx context.Context, eventType types.Even
 	}
 	sid, err := p.rpcClient.SubscribeEvent(ctx, q)
 	if err != nil {
-		return fmt.Errorf("failed to subscribe: %s", err)
+		return fmt.Errorf("failed to subscribe %s: %s", eventType.Name(), err)
 	}
 
 	p.subIDs[eventType] = sid
-	zap.S().Infof("subscribed to %s event: %d", eventType, sid)
+	zap.S().Infof("subscribed to %s event: %d", eventType.Name(), sid)
 
 	switch eventType {
-	case types.EventCoinBalanceChange:
-		if err := p.hd.AddSub(ctx, types.SubscriptionID(sid), p.hd.HandleBalanceChange); err != nil {
-			return err
-		}
+	case types.EventTypeCoinBalanceChange:
+		err = p.hd.AddSub(ctx, eventType.Name(), types.SubscriptionID(sid), p.hd.HandleBalanceChange)
+	case types.EventTypePublish:
+		err = p.hd.AddSub(ctx, eventType.Name(), types.SubscriptionID(sid), p.hd.HandlePublish)
+	case types.EventTypeMoveEvent:
+		err = p.hd.AddSub(ctx, eventType.Name(), types.SubscriptionID(sid), p.hd.HandleMove)
+	case types.EventTypeNewObject:
+		err = p.hd.AddSub(ctx, eventType.Name(), types.SubscriptionID(sid), p.hd.HandleNewObject)
+	case types.EventTypeMutateObject:
+		err = p.hd.AddSub(ctx, eventType.Name(), types.SubscriptionID(sid), p.hd.HandleMutateObject)
+	case types.EventTypeDeleteObject:
+		err = p.hd.AddSub(ctx, eventType.Name(), types.SubscriptionID(sid), p.hd.HandleDeleteObject)
+	case types.EventTypeTransferObject:
+		err = p.hd.AddSub(ctx, eventType.Name(), types.SubscriptionID(sid), p.hd.HandleTransferObject)
 	default:
-		zap.L().Warn("no handler for event",
-			zap.String("event", eventType.Name()))
+		err = fmt.Errorf("no handler for event: %s", eventType.Name())
 	}
-	return nil
+	return err
 }

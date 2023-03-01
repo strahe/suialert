@@ -70,6 +70,7 @@ func (c *command) initConfig() error {
 	c.vp.AutomaticEnv()
 	c.vp.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
+	c.vp.SetConfigType("toml")
 	if err := c.vp.ReadInConfig(); err != nil {
 		var e viper.ConfigFileNotFoundError
 		if !errors.As(err, &e) {

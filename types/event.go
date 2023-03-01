@@ -12,13 +12,13 @@ const (
 )
 
 const (
-	EventTypeMoveEvent     = EventType("MoveEvent")
-	EventTypePublish       = EventType("Publish")
-	EventCoinBalanceChange = EventType("CoinBalanceChange")
-	EventTransferObject    = EventType("TransferObject")
-	EventNewObject         = EventType("NewObject")
-	EventEpochChange       = EventType("EpochChange")
-	EventCheckpoint        = EventType("Checkpoint")
+	EventTypeMoveEvent         = EventType("MoveEvent")
+	EventTypePublish           = EventType("Publish")
+	EventTypeCoinBalanceChange = EventType("CoinBalanceChange")
+	EventTypeTransferObject    = EventType("TransferObject")
+	EventTypeNewObject         = EventType("NewObject")
+	EventTypeDeleteObject      = EventType("DeleteObject")
+	EventTypeMutateObject      = EventType("MutateObject")
 )
 
 type EventType string
@@ -34,16 +34,16 @@ func (e EventType) Description() string {
 		return "Move-specific event"
 	case EventTypePublish:
 		return "Module published"
-	case EventCoinBalanceChange:
+	case EventTypeCoinBalanceChange:
 		return "Coin balance changing event"
-	case EventTransferObject:
+	case EventTypeTransferObject:
 		return "Transfer objects to new address / wrap in another object"
-	case EventNewObject:
+	case EventTypeNewObject:
 		return "New object creation"
-	case EventEpochChange:
-		return "Epoch change"
-	case EventCheckpoint:
-		return "New checkpoint"
+	case EventTypeDeleteObject:
+		return "Delete object"
+	case EventTypeMutateObject:
+		return "Mutate object"
 	}
 	return "Unknown event"
 }
@@ -59,11 +59,11 @@ type StructTag struct {
 // Transaction level event
 // Move-specific event
 type MoveEvent struct {
-	PackageID         string    `json:"package_id"`
-	TransactionModule string    `json:"transaction_module"`
-	Sender            string    `json:"sender"`
-	Type              StructTag `json:"type"`
-	Contents          string    `json:"contents"`
+	PackageID         string          `json:"package_id"`
+	TransactionModule string          `json:"transaction_module"`
+	Sender            string          `json:"sender"`
+	Type              json.RawMessage `json:"type"`
+	Contents          json.RawMessage `json:"contents"`
 }
 
 // Publish Module published
@@ -119,10 +119,10 @@ type TransferObject struct {
 	PackageID         string `json:"package_id"`
 	TransactionModule string `json:"transaction_module"`
 	Sender            string `json:"sender"`
-	Recipient         string `json:"recipient"`
+	Recipient         Owner  `json:"recipient"`
 	ObjectType        string `json:"object_type"`
 	ObjectID          string `json:"object_id"`
-	Version           uint64 `json:"version"`
+	Version           int64  `json:"version"`
 }
 
 // MutateObject Object level event
@@ -133,7 +133,7 @@ type MutateObject struct {
 	Sender            string `json:"sender"`
 	ObjectType        string `json:"object_type"`
 	ObjectID          string `json:"object_id"`
-	Version           uint64 `json:"version"`
+	Version           int64  `json:"version"`
 }
 
 // DeleteObject Delete object
@@ -142,7 +142,7 @@ type DeleteObject struct {
 	TransactionModule string `json:"transaction_module"`
 	Sender            string `json:"sender"`
 	ObjectID          string `json:"object_id"`
-	Version           uint64 `json:"version"`
+	Version           int64  `json:"version"`
 }
 
 // NewObject object creation
@@ -150,8 +150,8 @@ type NewObject struct {
 	PackageID         string `json:"package_id"`
 	TransactionModule string `json:"transaction_module"`
 	Sender            string `json:"sender"`
-	Recipient         string `json:"recipient"`
+	Recipient         Owner  `json:"recipient"`
 	ObjectType        string `json:"object_type"`
 	ObjectID          string `json:"object_id"`
-	Version           uint64 `json:"version"`
+	Version           int64  `json:"version"`
 }

@@ -2,8 +2,7 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"reflect"
 
 	"github.com/pgcontrib/bigint"
 	"github.com/strahe/suialert/model"
@@ -12,39 +11,23 @@ import (
 )
 
 // HandleBalanceChange handle the balance change events.
-func (e *SubHandler) HandleBalanceChange(ctx context.Context, event *types.Subscription) error {
-	if event == nil {
+func (e *SubHandler) HandleBalanceChange(ctx context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
+	if event, ok := ed.(*types.CoinBalanceChange); !ok {
+		zap.S().Errorf("invalid coin balance change event type: %s", reflect.TypeOf(ed))
 		return nil
-	}
-	var er *types.EventResult
-	if err := json.Unmarshal(event.Result, er); err != nil {
-		return fmt.Errorf("error unmarshalling event result: %s", err.Error())
-	}
-
-	for name, raw := range er.Event {
-		switch name {
-		case types.EventCoinBalanceChange.Name():
-			var ed *types.CoinBalanceChange
-			if err := json.Unmarshal(raw, ed); err != nil {
-				zap.S().Errorf("error unmarshalling coin balance change event: %s", err.Error())
-				return err
-			}
-			if err := e.storeBalanceChangeEvent(ctx, er, ed); err != nil {
-				zap.S().Errorf("failed to store CoinBalanceChange event: %v", err)
-			}
-			zap.S().Info(ed)
-		default:
-			zap.S().Warnf("unknown event name: %s", name)
+	} else {
+		if err := e.storeBalanceChangeEvent(ctx, sid, er, event); err != nil {
+			zap.S().Errorf("failed to store %s event: %v", e.eventName(sid), err)
 		}
 	}
 	return nil
 }
 
-func (e *SubHandler) storeBalanceChangeEvent(ctx context.Context, er *types.EventResult, ed *types.CoinBalanceChange) error {
+func (e *SubHandler) storeBalanceChangeEvent(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed *types.CoinBalanceChange) error {
 	if er == nil || ed == nil {
 		return nil
 	}
-	cbc := model.CoinBalanceChangeEvent{
+	m := model.CoinBalanceChangeEvent{
 		TransactionDigest: er.Id.TxDigest,
 		EventSeq:          er.Id.EventSeq,
 		Timestamp:         er.Timestamp,
@@ -58,5 +41,5 @@ func (e *SubHandler) storeBalanceChangeEvent(ctx context.Context, er *types.Even
 		Version:           ed.Version,
 		Amount:            bigint.FromInt64(ed.Amount),
 	}
-	return e.store.PersistBatch(ctx, &cbc)
+	return e.storeEvent(sid, &m)
 }

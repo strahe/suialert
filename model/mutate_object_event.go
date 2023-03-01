@@ -3,8 +3,8 @@ package model
 import "context"
 
 type MutateObjectEvent struct {
-	TransactionDigest string `json:"tx_digest" pg:"tx_digest,notnull"`
-	EventSeq          int64  `json:"event_seq"  pg:"event_seq,notnull"`
+	TransactionDigest string `json:"tx_digest" pg:"tx_digest,pk,notnull"`
+	EventSeq          int64  `json:"event_seq"  pg:"event_seq,pk,notnull"`
 
 	//UTC timestamp in milliseconds
 	Timestamp uint64 `json:"timestamp" pg:"timestamp, notnull"`
