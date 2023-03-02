@@ -31,7 +31,7 @@ func (e *SubHandler) storeMutateObjectEvent(_ context.Context, sid types.Subscri
 		TransactionModule: ed.TransactionModule,
 		Sender:            ed.Sender,
 		ObjectID:          ed.ObjectID,
-		ObjectType:        ed.ObjectID,
+		ObjectType:        ed.ObjectType,
 		Version:           ed.Version,
 	}
 	return e.storeEvent(sid, &m)

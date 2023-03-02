@@ -27,6 +27,7 @@ func (e *SubHandler) storeDeleteObjectEvent(_ context.Context, sid types.Subscri
 		TransactionDigest: er.Id.TxDigest,
 		EventSeq:          er.Id.EventSeq,
 		Timestamp:         er.Timestamp,
+		PackageID:         ed.PackageID,
 		TransactionModule: ed.TransactionModule,
 		Sender:            ed.Sender,
 		ObjectID:          ed.ObjectID,

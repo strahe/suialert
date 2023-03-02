@@ -14,3 +14,13 @@ type StorageBatch interface {
 type Storage interface {
 	PersistBatch(ctx context.Context, ps ...Persistable) error
 }
+
+type AlertLevel string
+
+const (
+	AlertLevelNone   AlertLevel = "None"   // not alerting
+	AlertLevelLow    AlertLevel = "Low"    //
+	AlertLevelMedium AlertLevel = "Medium" //
+	AlertLevelHigh   AlertLevel = "High"   //
+	AlertLevelAll    AlertLevel = "All"    // send all alerts
+)

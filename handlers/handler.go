@@ -143,7 +143,6 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 			ed := types.NewObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
-				zap.S().Error(string(raw))
 				return err
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
@@ -213,7 +212,8 @@ func (e *SubHandler) appendAndStore(ctx context.Context, pe *eventPersist) error
 		}
 		zap.L().Debug("persisting events",
 			zap.String("name", e.eventName(pe.sid)),
-			zap.Int("count", len(e.storeQueued[pe.sid])))
+			zap.Int("count", len(e.storeQueued[pe.sid])),
+		)
 		e.storeQueued[pe.sid] = []model.Persistable{}
 	}
 	return nil

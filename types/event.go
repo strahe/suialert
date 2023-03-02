@@ -160,42 +160,42 @@ type Checkpoint struct {
 // TransferObject Object level event
 // Transfer objects to new address / wrap in another object
 type TransferObject struct {
-	PackageID         string       `json:"package_id"`
-	TransactionModule string       `json:"transaction_module"`
+	PackageID         string       `json:"packageId"`
+	TransactionModule string       `json:"transactionModule"`
 	Sender            string       `json:"sender"`
 	Recipient         *ObjectOwner `json:"recipient"`
-	ObjectType        string       `json:"object_type"`
-	ObjectID          string       `json:"object_id"`
+	ObjectType        string       `json:"objectType"`
+	ObjectID          string       `json:"objectId"`
 	Version           int64        `json:"version"`
 }
 
 // MutateObject Object level event
 // Object mutated.
 type MutateObject struct {
-	PackageID         string `json:"package_id"`
-	TransactionModule string `json:"transaction_module"`
+	PackageID         string `json:"packageId"`
+	TransactionModule string `json:"transactionModule"`
 	Sender            string `json:"sender"`
-	ObjectType        string `json:"object_type"`
-	ObjectID          string `json:"object_id"`
+	ObjectType        string `json:"objectType"`
+	ObjectID          string `json:"objectId"`
 	Version           int64  `json:"version"`
 }
 
 // DeleteObject Delete object
 type DeleteObject struct {
-	PackageID         string `json:"package_id"`
-	TransactionModule string `json:"transaction_module"`
+	PackageID         string `json:"packageId"`
+	TransactionModule string `json:"transactionModule"`
 	Sender            string `json:"sender"`
-	ObjectID          string `json:"object_id"`
+	ObjectID          string `json:"objectId"`
 	Version           int64  `json:"version"`
 }
 
 // NewObject object creation
 type NewObject struct {
-	PackageID         string       `json:"package_id"`
-	TransactionModule string       `json:"transaction_module"`
+	PackageID         string       `json:"packageId"`
+	TransactionModule string       `json:"transactionModule"`
 	Sender            string       `json:"sender"`
 	Recipient         *ObjectOwner `json:"recipient"`
-	ObjectType        string       `json:"object_type"`
-	ObjectID          string       `json:"object_id"`
+	ObjectType        string       `json:"objectType"`
+	ObjectID          string       `json:"objectId"`
 	Version           int64        `json:"version"`
 }

@@ -84,9 +84,12 @@ func (d *Database) IsConnected(ctx context.Context) bool {
 
 func (d *Database) Close() error {
 	zap.S().Info("closing database")
-	err := d.db.Close()
-	d.db = nil
-	return err
+	if !d.IsConnected(context.TODO()) {
+		err := d.db.Close()
+		d.db = nil
+		return err
+	}
+	return nil
 }
 
 func (d *Database) SchemaConfig() schema.Config {

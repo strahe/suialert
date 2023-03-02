@@ -36,3 +36,6 @@ type PostgresConfig struct {
 	SchemaName string `yaml:"schema_name" json:"schema_name" mapstructure:"schema_name"`
 	Upsert     bool   `yaml:"upsert" json:"upsert" mapstructure:"upsert"`
 }
+
+type CacheConfig struct {
+}

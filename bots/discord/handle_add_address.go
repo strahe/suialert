@@ -3,7 +3,7 @@ package discord
 import (
 	"time"
 
-	"github.com/strahe/suialert/types"
+	"github.com/strahe/suialert/model"
 
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
@@ -11,18 +11,17 @@ import (
 
 func (b *Bot) handleAddAddress(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	responses := map[discordgo.Locale]string{
-		discordgo.ChineseCN: "选择你想要接收通知的事件类型",
+		discordgo.ChineseCN: "选择你喜欢的告警类型.",
 	}
-	response := "Choose the type of event you want to add: "
+	response := "Select the alerts you like to receive."
 	if r, ok := responses[i.Locale]; ok {
 		response = r
 	}
-	minValue := 1
+
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: response,
-			Flags:   discordgo.MessageFlagsEphemeral,
+			Flags: discordgo.MessageFlagsEphemeral,
 			Components: []discordgo.MessageComponent{
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
@@ -30,9 +29,7 @@ func (b *Bot) handleAddAddress(s *discordgo.Session, i *discordgo.InteractionCre
 							// Select menu, as other components, must have a customID, so we set it to this value.
 							CustomID:    "select-events",
 							Placeholder: response,
-							MinValues:   &minValue,
-							MaxValues:   len(eventSelectOptions),
-							Options:     eventSelectOptions,
+							Options:     alertLevelOptions,
 						},
 					},
 				},
@@ -80,40 +77,30 @@ func (b *Bot) handleSelectEventType(s *discordgo.Session, i *discordgo.Interacti
 	}
 }
 
-var eventSelectOptions = []discordgo.SelectMenuOption{
+var alertLevelOptions = []discordgo.SelectMenuOption{
 	{
-		Label:       types.EventTypeMoveEvent.Name(),
-		Value:       types.EventTypeMoveEvent.Name(),
-		Description: types.EventTypeMoveEvent.Description(),
+		Label:       "None",
+		Value:       string(model.AlertLevelNone),
+		Description: "Do not send any alerts for now",
 	},
 	{
-		Label:       types.EventTypePublish.Name(),
-		Value:       types.EventTypePublish.Name(),
-		Description: types.EventTypePublish.Description(),
+		Label:       "Low",
+		Value:       string(model.AlertLevelLow),
+		Description: "Alert only SUI transfers",
 	},
 	{
-		Label:       types.EventTypeCoinBalanceChange.Name(),
-		Value:       types.EventTypeCoinBalanceChange.Name(),
-		Description: types.EventTypeCoinBalanceChange.Description(),
+		Label:       "Medium",
+		Value:       string(model.AlertLevelMedium),
+		Description: "All, excluding popular dapps, and < 0.1 SUI",
 	},
 	{
-		Label:       types.EventTypeTransferObject.Name(),
-		Value:       types.EventTypeTransferObject.Name(),
-		Description: types.EventTypeTransferObject.Description(),
+		Label:       "High",
+		Value:       string(model.AlertLevelHigh),
+		Description: "All, excluding < 0.1 SUI",
 	},
 	{
-		Label:       types.EventTypeNewObject.Name(),
-		Value:       types.EventTypeNewObject.Name(),
-		Description: types.EventTypeNewObject.Description(),
-	},
-	{
-		Label:       types.EventTypeMutateObject.Name(),
-		Value:       types.EventTypeMutateObject.Name(),
-		Description: types.EventTypeMutateObject.Description(),
-	},
-	{
-		Label:       types.EventTypeDeleteObject.Name(),
-		Value:       types.EventTypeDeleteObject.Name(),
-		Description: types.EventTypeDeleteObject.Description(),
+		Label:       "All",
+		Value:       string(model.AlertLevelAll),
+		Description: "Send me all the alerts",
 	},
 }
