@@ -16,7 +16,7 @@ type Bot struct {
 	cmdIDs map[string]string
 }
 
-func New(cfg config.DiscordBotConfig) (*Bot, error) {
+func NewDiscord(cfg config.DiscordBotConfig) (*Bot, error) {
 	ss, err := discordgo.New("Bot " + cfg.Token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %s", err)
@@ -60,16 +60,14 @@ func (b *Bot) addHandlers() {
 		switch i.Type {
 		case discordgo.InteractionApplicationCommand, discordgo.InteractionApplicationCommandAutocomplete:
 			switch i.ApplicationCommandData().Name {
-			case "start":
-				b.handleStart(s, i)
-			case "add-address":
-				b.handleAddAddress(s, i)
+			case "alert":
+				b.handleAlert(s, i)
 			default:
 				zap.S().Errorf("Unknown slash command: %s", i.ApplicationCommandData().Name)
 			}
 		case discordgo.InteractionMessageComponent:
 			switch i.MessageComponentData().CustomID {
-			case "select-events":
+			case "select-alert":
 				b.handleSelectEventType(s, i)
 			}
 		case discordgo.InteractionModalSubmit:

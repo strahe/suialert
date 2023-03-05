@@ -31,6 +31,7 @@ type Database struct {
 	opt          *pg.Options
 	schemaConfig schema.Config
 	Upsert       bool
+	logger       *zap.Logger
 }
 
 func NewDatabase(cfg config.PostgresConfig) (*Database, error) {
@@ -82,9 +83,9 @@ func (d *Database) IsConnected(ctx context.Context) bool {
 	return true
 }
 
-func (d *Database) Close() error {
-	zap.S().Info("closing database")
-	if !d.IsConnected(context.TODO()) {
+func (d *Database) Close(ctx context.Context) error {
+	d.logger.Info("closing database")
+	if !d.IsConnected(ctx) {
 		err := d.db.Close()
 		d.db = nil
 		return err

@@ -1,34 +1,64 @@
 package discord
 
 import (
+	"fmt"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
+
+	"github.com/samber/lo"
 
 	"github.com/strahe/suialert/model"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/strahe/suialert/types"
+
 	"go.uber.org/zap"
 )
 
-func (b *Bot) handleAddAddress(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	responses := map[discordgo.Locale]string{
-		discordgo.ChineseCN: "选择你喜欢的告警类型.",
+func (b *Bot) handleAlert(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	options := i.ApplicationCommandData().Options
+	opt, ok := lo.Find[*discordgo.ApplicationCommandInteractionDataOption](options,
+		func(item *discordgo.ApplicationCommandInteractionDataOption) bool {
+			if item.Name == "address" {
+				return true
+			}
+			return false
+		})
+	if !ok {
+		// address must be set
+		return
 	}
-	response := "Select the alerts you like to receive."
+
+	ao := types.HexToAddress(opt.StringValue())
+
+	responses := map[discordgo.Locale]string{
+		discordgo.ChineseCN: fmt.Sprintf("账户 %s 已成功添加到你的监控列表中", ao.Hex()),
+	}
+	response := fmt.Sprintf("The account %s is added successfully to your monitored list", ao.Hex())
 	if r, ok := responses[i.Locale]; ok {
 		response = r
+	}
+
+	placeholders := map[discordgo.Locale]string{
+		discordgo.ChineseCN: "请选择你喜欢的告警类型.",
+	}
+	placeholder := "Please select the alerts you like to receive."
+	if r, ok := placeholders[i.Locale]; ok {
+		placeholder = r
 	}
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Flags: discordgo.MessageFlagsEphemeral,
+			Content: response,
+			Flags:   discordgo.MessageFlagsEphemeral,
 			Components: []discordgo.MessageComponent{
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
 						discordgo.SelectMenu{
 							// Select menu, as other components, must have a customID, so we set it to this value.
-							CustomID:    "select-events",
-							Placeholder: response,
+							CustomID:    "select-alert",
+							Placeholder: placeholder,
 							Options:     alertLevelOptions,
 						},
 					},

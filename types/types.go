@@ -1,14 +1,21 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"reflect"
+
+	"golang.org/x/crypto/sha3"
 )
 
-type Address string
+const (
+	AddressLength = 20
+)
+
 type ObjectId []byte
 type Digest []byte
+type Address [AddressLength]byte
 
 type EventQuery struct {
 	// Return all events.
@@ -101,4 +108,76 @@ type SubscriptionID uint64
 type Subscription struct {
 	Subscription SubscriptionID  `json:"subscription"`
 	Result       json.RawMessage `json:"result"`
+}
+
+// BytesToAddress returns Address with value b.
+// If b is larger than len(h), b will be cropped from the left.
+func BytesToAddress(b []byte) Address {
+	var a Address
+	a.SetBytes(b)
+	return a
+}
+
+// HexToAddress returns Address with byte values of s.
+// If s is larger than len(h), s will be cropped from the left.
+func HexToAddress(s string) Address { return BytesToAddress(FromHex(s)) }
+
+// String implements fmt.Stringer.
+func (a Address) String() string {
+	return a.Hex()
+}
+
+func (a Address) Hex() string {
+	return string(a.checksumHex())
+}
+
+func (a Address) hex() []byte {
+	var buf [len(a)*2 + 2]byte
+	copy(buf[:2], "0x")
+	hex.Encode(buf[2:], a[:])
+	return buf[:]
+}
+
+func (a *Address) checksumHex() []byte {
+	buf := a.hex()
+
+	// compute checksum
+	sha := sha3.NewLegacyKeccak256()
+	sha.Write(buf[2:])
+	hash := sha.Sum(nil)
+	for i := 2; i < len(buf); i++ {
+		hashByte := hash[(i-2)/2]
+		if i%2 == 0 {
+			hashByte = hashByte >> 4
+		} else {
+			hashByte &= 0xf
+		}
+		if buf[i] > '9' && hashByte > 7 {
+			buf[i] -= 32
+		}
+	}
+	return buf[:]
+}
+
+// SetBytes sets the address to the value of b.
+// If b is larger than len(a), b will be cropped from the left.
+func (a *Address) SetBytes(b []byte) {
+	if len(b) > len(a) {
+		b = b[len(b)-AddressLength:]
+	}
+	copy(a[AddressLength-len(b):], b)
+}
+
+func (a Address) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.String())
+}
+
+func (a *Address) UnmarshalJSON(data []byte) error {
+	str := ""
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return err
+	}
+	*a = HexToAddress(str)
+	return nil
 }

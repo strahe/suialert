@@ -28,36 +28,21 @@ type Processor struct {
 func NewProcessor(cfg *config.Config, rpcClient *client.Client, hd *handlers.SubHandler) (*Processor, error) {
 	p := &Processor{
 		cfg:       cfg,
-		rpcClient: rpcClient,
 		hd:        hd,
+		rpcClient: rpcClient,
 		subIDs:    make(map[types.EventType]uint64),
 		done:      make(chan struct{}),
 	}
 	return p, nil
 }
 
-func (p *Processor) Run(ctx context.Context) error {
-	zap.S().Infof("starting processor")
-	return p.subscribeEvents(ctx)
+func (p *Processor) Start(ctx context.Context) error {
+	return p.SubscribeEvents(ctx)
 }
 
-func (p *Processor) Close() error {
+func (p *Processor) Close(ctx context.Context) error {
 	close(p.done)
-	return p.unsubscribeEvents(context.TODO())
-}
-
-func (p *Processor) subscribeEvents(ctx context.Context) error {
-	for _, event := range p.cfg.Subscribe.EventTypes {
-		zap.L().Info("subscribing",
-			zap.String("event", event),
-			zap.Time("start", time.Now()),
-		)
-		if err := p.subscribeEventType(ctx, types.EventType(event)); err != nil {
-			zap.S().Errorf("failed to subscribe event type %s: %v", event, err)
-			return err
-		}
-	}
-	return nil
+	return p.unsubscribeEvents(ctx)
 }
 
 func (p *Processor) unsubscribeEvents(ctx context.Context) error {
@@ -86,9 +71,23 @@ func (p *Processor) unsubscribeEvents(ctx context.Context) error {
 	return nil
 }
 
-// subscribeEventType subscribes to one event type
+func (p *Processor) SubscribeEvents(ctx context.Context) error {
+	for _, event := range p.cfg.Sui.EventTypes {
+		zap.L().Info("subscribing",
+			zap.String("event", event),
+			zap.Time("start", time.Now()),
+		)
+		if err := p.SubscribeEventType(ctx, types.EventType(event)); err != nil {
+			zap.S().Errorf("failed to subscribe event type %s: %v", event, err)
+			return err
+		}
+	}
+	return nil
+}
+
+// SubscribeEventType subscribes to one event type
 // https://docs.sui.io/build/event_api#event-filters
-func (p *Processor) subscribeEventType(ctx context.Context, eventType types.EventType) error {
+func (p *Processor) SubscribeEventType(ctx context.Context, eventType types.EventType) error {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 

@@ -34,7 +34,7 @@ type SubHandler struct {
 	done          chan struct{}
 }
 
-func NewEthSubHandler(bot bots.Bot, store model.Storage) *SubHandler {
+func NewSubHandler(bot bots.Bot, store model.Storage) *SubHandler {
 	hd := &SubHandler{
 		handlers:      map[client.SubscriptionID]handler{},
 		eventNames:    map[client.SubscriptionID]string{},

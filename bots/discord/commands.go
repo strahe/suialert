@@ -6,29 +6,20 @@ import (
 
 var commands = []discordgo.ApplicationCommand{
 	{
-		Name:        "start",
-		Description: "Start command.",
+		Name:        "alert",
+		Description: "Add a new address to the alert list",
 		NameLocalizations: &map[discordgo.Locale]string{
-			discordgo.ChineseCN: "开始",
+			discordgo.ChineseCN: "监控",
 		},
 		DescriptionLocalizations: &map[discordgo.Locale]string{
-			discordgo.ChineseCN: "开始命令",
-		},
-	},
-	{
-		Name:        "add-address",
-		Description: "Add a new address.",
-		NameLocalizations: &map[discordgo.Locale]string{
-			discordgo.ChineseCN: "添加地址",
-		},
-		DescriptionLocalizations: &map[discordgo.Locale]string{
-			discordgo.ChineseCN: "添加新地址",
+			discordgo.ChineseCN: "添加一个地址到监控列表",
 		},
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionSubCommand,
+				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "address",
 				Description: "Sui network address",
+				Required:    true,
 			},
 		},
 	},

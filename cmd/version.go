@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/strahe/suialert/build"
 )
@@ -14,6 +15,5 @@ func (c *command) initVersionCmd() {
 			fmt.Println(build.UserVersion())
 		},
 	}
-	c.setNodeFlags(cmd)
 	c.root.AddCommand(cmd)
 }

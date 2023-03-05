@@ -9,14 +9,16 @@ require (
 	github.com/go-pg/pg/v10 v10.11.0
 	github.com/pgcontrib/bigint v1.0.2
 	github.com/pkg/errors v0.9.1
+	github.com/samber/lo v1.37.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
+	go.uber.org/fx v1.19.2
 	go.uber.org/zap v1.24.0
+	golang.org/x/crypto v0.6.0
 	gopkg.in/telebot.v3 v3.1.2
 )
 
 require (
-	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-pg/zerochecker v0.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -42,9 +44,10 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
+	go.uber.org/dig v1.16.1 // indirect
 	go.uber.org/goleak v1.2.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
+	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect

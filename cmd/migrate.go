@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/strahe/suialert/config"
 	"github.com/strahe/suialert/storage"
@@ -29,6 +30,5 @@ func (c *command) initMigrateCmd() {
 			return db.MigrateSchema(ctx)
 		},
 	}
-	c.setNodeFlags(cmd)
 	c.root.AddCommand(cmd)
 }

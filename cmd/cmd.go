@@ -16,11 +16,6 @@ const (
 	optionRpcEndpoints = "rpc"
 )
 
-const (
-	DevNetRpcUrl  = "wss://fullnode.devnet.sui.io"
-	TestnetRpcUrl = "wss://fullnode.testnet.sui.io"
-)
-
 type command struct {
 	root    *cobra.Command
 	vp      *viper.Viper

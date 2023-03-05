@@ -6,7 +6,6 @@ import (
 	"github.com/strahe/suialert/types"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/strahe/suialert/handlers"
 )
 
 // Client is the client interface for interacting with the sui node.
@@ -16,8 +15,12 @@ type Client struct {
 	UnsubscribeEvent func(ctx context.Context, id uint64) (bool, error)
 }
 
+type SubscribeEventHandler interface {
+	SubscribeEvent(ctx context.Context, r jsonrpc.RawParams) error
+}
+
 // NewClient creates a new client.
-func NewClient(ctx context.Context, addr string, hd *handlers.SubHandler) (*Client, func(), error) {
+func NewClient(ctx context.Context, addr string, hd SubscribeEventHandler) (*Client, func(), error) {
 
 	rpcOpts := []jsonrpc.Option{
 		jsonrpc.WithClientHandler("Sui", hd),
