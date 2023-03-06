@@ -46,11 +46,11 @@ func NewBot(lc fx.Lifecycle, cfg *config.Config, userService *service.UserServic
 		return nil, err
 	}
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			return bot.Run()
+		OnStart: func(ctx context.Context) error {
+			return bot.Run(ctx)
 		},
-		OnStop: func(context.Context) error {
-			return bot.Close()
+		OnStop: func(ctx context.Context) error {
+			return bot.Close(ctx)
 		},
 	})
 	return bot, nil

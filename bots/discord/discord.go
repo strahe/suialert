@@ -1,10 +1,12 @@
 package discord
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
 
+	"github.com/allegro/bigcache/v3"
 	"github.com/strahe/suialert/model"
 
 	"github.com/strahe/suialert/service"
@@ -22,6 +24,8 @@ type Bot struct {
 
 	userService *service.UserService
 	ruleService *service.RuleService
+
+	cache *bigcache.BigCache
 }
 
 func NewDiscord(cfg config.DiscordBotConfig,
@@ -30,6 +34,7 @@ func NewDiscord(cfg config.DiscordBotConfig,
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %s", err)
 	}
+
 	bot := &Bot{
 		cfg:         cfg,
 		session:     ss,
@@ -41,15 +46,20 @@ func NewDiscord(cfg config.DiscordBotConfig,
 	return bot, nil
 }
 
-func (b *Bot) Run() error {
+func (b *Bot) Run(context.Context) error {
 	if err := b.session.Open(); err != nil {
 		return fmt.Errorf("failed to open session: %s", err)
 	}
+	cache, err := bigcache.New(context.TODO(), bigcache.DefaultConfig(time.Hour))
+	if err != nil {
+		return fmt.Errorf("failed to create cache: %s", err)
+	}
+	b.cache = cache
 	return b.createCommands()
 }
 
 // Close closes the bot.
-func (b *Bot) Close() error {
+func (b *Bot) Close(_ context.Context) error {
 	zap.S().Info("closing bot")
 	if b.session != nil {
 		return b.session.Close()
@@ -60,6 +70,9 @@ func (b *Bot) Close() error {
 		if err != nil {
 			log.Fatalf("Cannot delete slash command %q: %v", name, err)
 		}
+	}
+	if b.cache != nil {
+		return b.cache.Close()
 	}
 
 	return nil

@@ -36,3 +36,8 @@ func (s *RuleService) FindByAddress(uid int64, address string) (*model.Rule, err
 		return nil, err
 	}
 }
+
+func (s *RuleService) Update(rule *model.Rule) error {
+	_, err := s.db.AsORM().Model(rule).WherePK().Column("updated_at", "alert_level").Update()
+	return err
+}

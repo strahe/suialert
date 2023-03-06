@@ -33,30 +33,47 @@ func (b *Bot) handleAlert(s *discordgo.Session, i *discordgo.InteractionCreate) 
 
 	u, err := b.findOrCreateUser(i)
 	if err != nil {
-		zap.S().Errorf("find user failed: %v", err)
+		if err := b.returnError(s, i, map[discordgo.Locale]string{
+			discordgo.EnglishUS: "cant find user",
+		}); err != nil {
+			zap.S().Error(err)
+		}
 		return
 	}
 
 	ao := types.HexToAddress(opt.StringValue())
+	zap.L().Debug("cache address",
+		zap.String("id", i.ID),
+		zap.String("address", ao.Hex()))
+	if err := b.cache.Set(i.ID, []byte(ao.Hex())); err != nil {
+		zap.S().Errorf("failed to cache alert address: %v", err)
+	}
 
 	rule, err := b.ruleService.FindByAddress(u.ID, ao.Hex())
-	//if err != nil && err != service.ErrNotFound {
-	//	zap.S().Errorf("find rule failed: %v", err)
-	//	return
-	//}
 	switch err {
 	case nil:
 		zap.S().Infof("rule already exists: %s", rule.Address)
 	case service.ErrNotFound:
-		// todo
+		if err := b.ruleService.Create(&model.Rule{
+			Address:    ao.Hex(),
+			UserID:     u.ID,
+			AlertLevel: model.AlertLevelNone,
+			CreatedAt:  time.Now().Unix(),
+			UpdatedAt:  time.Now().Unix(),
+		}); err != nil {
+			err = b.returnError(s, i, map[discordgo.Locale]string{
+				discordgo.EnglishUS: "cant create rule",
+			})
+			zap.S().Errorf("cant create rule: %s", err)
+		}
 	default:
-		zap.S().Errorf("find rule failed: %v", err)
+		if err := b.returnError(s, i, map[discordgo.Locale]string{
+			discordgo.EnglishUS: "address already exists",
+		}); err != nil {
+			zap.S().Error(err)
+		}
+		return
 	}
-
-	if rule != nil {
-		zap.S().Infof("rule already exists: %s", rule.Address)
-	}
-
 	responses := map[discordgo.Locale]string{
 		discordgo.ChineseCN: fmt.Sprintf("账户 %s 已成功添加到你的监控列表中", ao.Hex()),
 	}
@@ -97,39 +114,61 @@ func (b *Bot) handleAlert(s *discordgo.Session, i *discordgo.InteractionCreate) 
 }
 
 func (b *Bot) handleSelectEventType(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	var response *discordgo.InteractionResponse
+	u, err := b.findOrCreateUser(i)
+	if err != nil {
+		zap.S().Errorf("send error msg: %s", b.returnError(s, i, map[discordgo.Locale]string{
+			discordgo.EnglishUS: "cant find user",
+		}))
+		return
+	}
 
+	var content string
 	data := i.MessageComponentData()
-	switch data.Values[0] {
-	case "go":
-		response = &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "This is the way.",
-				Flags:   discordgo.MessageFlagsEphemeral,
-			},
-		}
-	default:
-		response = &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "It is not the way to go.",
-				Flags:   discordgo.MessageFlagsEphemeral,
-			},
+	for _, v := range alertLevelOptions {
+		if data.Values[0] == v.Value {
+			content = fmt.Sprintf("You have selected %s\n"+
+				"%s", v.Label, v.Description)
+			break
 		}
 	}
-	err := s.InteractionRespond(i.Interaction, response)
-	if err != nil {
-		panic(err)
+	response := &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: content,
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
 	}
-	time.Sleep(time.Second) // Doing that so user won't see instant response.
-	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: "Anyways, now when you know how to use single select menus, let's see how multi select menus work. " +
-			"Try calling `/selects multi` command.",
-		Flags: discordgo.MessageFlagsEphemeral,
-	})
+
+	v, err := b.cache.Get(i.Message.Interaction.ID)
 	if err != nil {
-		panic(err)
+		zap.S().Error(err)
+	}
+	zap.L().Debug("get cache address",
+		zap.String("ID", i.Interaction.ID),
+		zap.String("address", string(v)),
+	)
+
+	rule, err := b.ruleService.FindByAddress(u.ID, string(v))
+	if err != nil {
+		zap.S().Errorf("cant find rule: %s", err)
+		b.returnError(s, i, map[discordgo.Locale]string{
+			discordgo.EnglishUS: "cant find rule",
+		})
+		return
+	}
+	rule.AlertLevel = model.AlertLevel(data.Values[0])
+	rule.UpdatedAt = time.Now().Unix()
+	if err := b.ruleService.Update(rule); err != nil {
+		zap.S().Errorf("cant update rule: %s", err)
+		b.returnError(s, i, map[discordgo.Locale]string{
+			discordgo.EnglishUS: "cant update rule",
+		})
+		return
+	}
+
+	err = s.InteractionRespond(i.Interaction, response)
+	if err != nil {
+		zap.S().Error(err)
 	}
 }
 
@@ -159,4 +198,26 @@ var alertLevelOptions = []discordgo.SelectMenuOption{
 		Value:       string(model.AlertLevelAll),
 		Description: "Send me all the alerts",
 	},
+}
+
+func (b *Bot) returnError(s *discordgo.Session, i *discordgo.InteractionCreate, msgs map[discordgo.Locale]string) error {
+	if len(msgs) == 0 {
+		return fmt.Errorf("no messages")
+	}
+	var content string
+	msg, ok := msgs[i.Locale]
+	if ok {
+		content = msg
+	} else if msg, ok = msgs[discordgo.EnglishUS]; ok {
+		content = msg
+	} else {
+		content = lo.Values[discordgo.Locale, string](msgs)[0]
+	}
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Title:   "Error",
+			Content: content,
+			Flags:   discordgo.MessageFlagsEphemeral,
+		}})
 }
