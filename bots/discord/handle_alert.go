@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/strahe/suialert/service"
+
 	"github.com/bwmarrin/discordgo"
 
 	"github.com/samber/lo"
@@ -29,7 +31,31 @@ func (b *Bot) handleAlert(s *discordgo.Session, i *discordgo.InteractionCreate) 
 		return
 	}
 
+	u, err := b.findOrCreateUser(i)
+	if err != nil {
+		zap.S().Errorf("find user failed: %v", err)
+		return
+	}
+
 	ao := types.HexToAddress(opt.StringValue())
+
+	rule, err := b.ruleService.FindByAddress(u.ID, ao.Hex())
+	//if err != nil && err != service.ErrNotFound {
+	//	zap.S().Errorf("find rule failed: %v", err)
+	//	return
+	//}
+	switch err {
+	case nil:
+		zap.S().Infof("rule already exists: %s", rule.Address)
+	case service.ErrNotFound:
+		// todo
+	default:
+		zap.S().Errorf("find rule failed: %v", err)
+	}
+
+	if rule != nil {
+		zap.S().Infof("rule already exists: %s", rule.Address)
+	}
 
 	responses := map[discordgo.Locale]string{
 		discordgo.ChineseCN: fmt.Sprintf("账户 %s 已成功添加到你的监控列表中", ao.Hex()),
@@ -47,7 +73,7 @@ func (b *Bot) handleAlert(s *discordgo.Session, i *discordgo.InteractionCreate) 
 		placeholder = r
 	}
 
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: response,

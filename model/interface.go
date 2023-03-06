@@ -1,6 +1,10 @@
 package model
 
-import "context"
+import (
+	"context"
+
+	"github.com/go-pg/pg/v10"
+)
 
 type Persistable interface {
 	Persist(ctx context.Context, s StorageBatch) error
@@ -13,6 +17,7 @@ type StorageBatch interface {
 // A Storage can marshal models into a serializable format and persist them.
 type Storage interface {
 	PersistBatch(ctx context.Context, ps ...Persistable) error
+	AsORM() *pg.DB
 }
 
 type AlertLevel string

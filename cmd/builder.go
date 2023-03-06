@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 
+	"github.com/strahe/suialert/service"
+
 	"github.com/strahe/suialert/bots"
 	"github.com/strahe/suialert/bots/discord"
 	"github.com/strahe/suialert/client"
@@ -12,19 +14,7 @@ import (
 	"github.com/strahe/suialert/processors"
 	"github.com/strahe/suialert/storage"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
-
-func NewLogger(cfg *config.Config) (*zap.Logger, error) {
-	var logger *zap.Logger
-	var err error
-	if cfg.Debug {
-		logger, err = zap.NewDevelopment()
-	} else {
-		logger, err = zap.NewProduction()
-	}
-	return logger, err
-}
 
 func (c *command) Config() (*config.Config, error) {
 	cfg := config.DefaultConfig
@@ -50,8 +40,8 @@ func NewStorage(lc fx.Lifecycle, cfg *config.Config) (model.Storage, error) {
 	return db, nil
 }
 
-func NewBot(lc fx.Lifecycle, cfg *config.Config) (bots.Bot, error) {
-	bot, err := discord.NewDiscord(cfg.Bots.Discord)
+func NewBot(lc fx.Lifecycle, cfg *config.Config, userService *service.UserService, ruleService *service.RuleService) (bots.Bot, error) {
+	bot, err := discord.NewDiscord(cfg.Bots.Discord, userService, ruleService)
 	if err != nil {
 		return nil, err
 	}
@@ -105,4 +95,13 @@ func NewPRCClient(lc fx.Lifecycle, cfg *config.Config, hd *handlers.SubHandler) 
 		},
 	})
 	return c, nil
+}
+
+func NewRuleService(store model.Storage) *service.RuleService {
+
+	return service.NewRuleService(store)
+}
+
+func NewUserService(store model.Storage) *service.UserService {
+	return service.NewUserService(store)
 }

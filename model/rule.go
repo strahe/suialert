@@ -1,22 +1,11 @@
 package model
 
-import "github.com/pgcontrib/bigint"
-
-type Role struct {
-	Address string      `json:"address" pg:"address,pk,notnull"`
-	UserID  int64       `json:"user_id" pg:"user_id,pk,notnull"`
-	User    *User       `json:"user,omitempty" pg:"rel:has-one"`
-	Rules   []AlertRule `json:"rules" pg:"rules"`
-}
-
-type CoinBalanceChangeParams struct {
-	ChangeType        *string        `json:"change_type" pg:"change_type,"`
-	TransactionModule *string        `json:"transaction_module" pg:"transaction_module,"`
-	CoinType          *string        `json:"coin_type" pg:"coin_type,"`
-	Amount            *bigint.Bigint `json:"amount" pg:"amount,"`
-}
-
-type AlertRule struct {
-	Event  *string     `json:"event" pg:"event,notnull"`
-	Params interface{} `json:"params" pg:"params"`
+type Rule struct {
+	ID         int        `json:"id" pg:"id"`
+	Address    string     `json:"address" pg:"address,pk,notnull"`
+	UserID     int64      `json:"user_id" pg:"user_id,pk,notnull"`
+	User       *User      `json:"user,omitempty" pg:"rel:has-one"`
+	AlertLevel AlertLevel `json:"alert_level" pg:"alert_level,notnull"`
+	CreatedAt  int64      `json:"created_at" pg:"created_at,notnull"`
+	UpdatedAt  int64      `json:"updated_at" pg:"updated_at,notnull"`
 }

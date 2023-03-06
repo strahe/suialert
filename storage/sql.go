@@ -24,6 +24,8 @@ var models = []interface{}{
 	(*model.NewObjectEvent)(nil),
 	(*model.PublishEvent)(nil),
 	(*model.TransferObjectEvent)(nil),
+	(*model.User)(nil),
+	(*model.Rule)(nil),
 }
 
 type Database struct {
@@ -95,6 +97,10 @@ func (d *Database) Close(ctx context.Context) error {
 
 func (d *Database) SchemaConfig() schema.Config {
 	return d.schemaConfig
+}
+
+func (d *Database) AsORM() *pg.DB {
+	return d.db
 }
 
 // PersistBatch persists a batch of persistable in a single transaction
@@ -209,7 +215,7 @@ func (d *Database) MigrateSchema(ctx context.Context) error {
 	}
 	defer db.Close() // nolint: errcheck
 
-	if err := initDatabaseSchema(db, d.SchemaConfig()); err != nil {
+	if err := initDatabaseSchema(ctx, db, d.SchemaConfig()); err != nil {
 		return fmt.Errorf("initializing schema version tables: %w", err)
 	}
 
@@ -217,23 +223,45 @@ func (d *Database) MigrateSchema(ctx context.Context) error {
 }
 
 // createSchema creates database schema for User and Story models.
-func createSchema(db *pg.DB) error {
+func createSchema(ctx context.Context, db *pg.DB, cfg schema.Config) error {
 	for _, mm := range models {
-		err := db.Model(mm).CreateTable(&orm.CreateTableOptions{})
+		q := db.Model(mm).TableModel().Table()
+		tableName := strings.Trim(string(q.SQLNameForSelects), `"`)
+		e, err := tableExists(ctx, db, cfg.SchemaName, tableName)
+		zap.L().Info("tableExists",
+			zap.String("table", tableName),
+			zap.Bool("exists", e),
+			zap.Error(err),
+		)
 		if err != nil {
 			return err
+		} else if !e {
+			err = db.Model(mm).CreateTable(&orm.CreateTableOptions{})
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
 // initDatabaseSchema initializes the version tables for tracking schema version installed in the database
-func initDatabaseSchema(db *pg.DB, cfg schema.Config) error {
+func initDatabaseSchema(ctx context.Context, db *pg.DB, cfg schema.Config) error {
 	if cfg.SchemaName != "public" {
 		_, err := db.Exec(`CREATE SCHEMA IF NOT EXISTS ?`, pg.SafeQuery(cfg.SchemaName))
 		if err != nil {
 			return fmt.Errorf("ensure schema exists :%w", err)
 		}
 	}
-	return createSchema(db)
+	return createSchema(ctx, db, cfg)
+}
+
+func tableExists(ctx context.Context, db *pg.DB, schemaName string, tableName string) (bool, error) {
+	var exists bool
+	_, err := db.QueryOneContext(ctx, pg.Scan(&exists), `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema=? AND table_name=?)`, schemaName, tableName)
+	if err != nil {
+		return false, fmt.Errorf("querying table: %v", err)
+	}
+
+	return exists, nil
 }

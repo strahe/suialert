@@ -17,6 +17,8 @@ func (c *command) initRunCmd() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := fx.New(
 				fx.Provide(c.Config),
+				fx.Provide(NewRuleService),
+				fx.Provide(NewUserService),
 				fx.Provide(NewStorage),
 				fx.Provide(NewPRCClient),
 				fx.Provide(NewProcessor),
