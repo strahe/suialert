@@ -1,0 +1,5 @@
+[
+  {"packageId":"0x0000000000000000000000000000000000000002","transactionModule":"transfer_object","sender":"0x7bcb60878fb8e28d4412324842351e7261e072ec","changeType":"Receive","owner":{"AddressOwner":"0xfD9A15b8a0d7EBAB0AdB0c69F1c03b05cc2a5a32"},"coinType":"0x2::sui::SUI","coinObjectId":"0x7cf75ee1856a0ef9e6f262209420e6ea088d0edb","version":6675,"amount":1000000000},
+  {"packageId":"0x0000000000000000000000000000000000000002","transactionModule":"gas","sender":"0x7bcb60878fb8e28d4412324842351e7261e072ec","changeType":"Gas","owner":{"AddressOwner":"0x7BCB60878FB8e28D4412324842351E7261e072ec"},"coinType":"0x2::sui::SUI","coinObjectId":"0xe75d2df8cc746cbbe2258eb088b5324a2f3908f1","version":6673,"amount":-141},
+  {"packageId":"0x0000000000000000000000000000000000000002","transactionModule":"transfer_object","sender":"0x7bcb60878fb8e28d4412324842351e7261e072ec","changeType":"Pay","owner":{"AddressOwner":"0x7BCB60878FB8e28D4412324842351E7261e072ec"},"coinType":"0x2::sui::SUI","coinObjectId":"0xec3bedc86732201a099fd460a33febc01f8ab4a0","version":6674,"amount":-1000000000}
+]
