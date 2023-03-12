@@ -16,3 +16,4 @@
 .idea
 saas
 config.toml
+db.sqlite3

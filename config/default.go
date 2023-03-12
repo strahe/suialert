@@ -13,9 +13,7 @@ var DefaultConfig = Config{
 	},
 
 	Database: DatabaseConfig{
-		Postgres: PostgresConfig{
-			SchemaName: "public",
-			PoolSize:   50,
-		},
+		Driver: "sqlite3",
+		DSN:    "db.sqlite3",
 	},
 }

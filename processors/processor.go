@@ -116,7 +116,7 @@ func (p *Processor) SubscribeEventType(ctx context.Context, eventType types.Even
 		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleBalanceChange)
 	case types.EventTypePublish:
 		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandlePublish)
-	case types.EventTypeMoveEvent:
+	case types.EventTypeMove:
 		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleMove)
 	case types.EventTypeNewObject:
 		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleNewObject)

@@ -2,8 +2,14 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/strahe/suialert/service"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/strahe/suialert/bots"
 	"github.com/strahe/suialert/bots/discord"
@@ -12,7 +18,6 @@ import (
 	"github.com/strahe/suialert/handlers"
 	"github.com/strahe/suialert/model"
 	"github.com/strahe/suialert/processors"
-	"github.com/strahe/suialert/storage"
 	"go.uber.org/fx"
 )
 
@@ -22,22 +27,6 @@ func (c *command) Config() (*config.Config, error) {
 		return nil, err
 	}
 	return &cfg, nil
-}
-
-func NewStorage(lc fx.Lifecycle, cfg *config.Config) (model.Storage, error) {
-	db, err := storage.NewDatabase(cfg.Database.Postgres)
-	if err != nil {
-		return nil, err
-	}
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return db.Connect(ctx)
-		},
-		OnStop: func(ctx context.Context) error {
-			return db.Close(ctx)
-		},
-	})
-	return db, nil
 }
 
 func NewBot(lc fx.Lifecycle, cfg *config.Config, userService *service.UserService, ruleService *service.RuleService) (bots.Bot, error) {
@@ -56,8 +45,8 @@ func NewBot(lc fx.Lifecycle, cfg *config.Config, userService *service.UserServic
 	return bot, nil
 }
 
-func NewHandler(lc fx.Lifecycle, bot bots.Bot, store model.Storage) *handlers.SubHandler {
-	hd := handlers.NewSubHandler(bot, store)
+func NewHandler(lc fx.Lifecycle, bot bots.Bot, db *gorm.DB) *handlers.SubHandler {
+	hd := handlers.NewSubHandler(bot, db)
 	lc.Append(fx.Hook{
 		OnStop: func(context.Context) error {
 			return hd.Close()
@@ -97,11 +86,46 @@ func NewPRCClient(lc fx.Lifecycle, cfg *config.Config, hd *handlers.SubHandler) 
 	return c, nil
 }
 
-func NewRuleService(store model.Storage) *service.RuleService {
+func NewRuleService(db *gorm.DB) *service.RuleService {
 
-	return service.NewRuleService(store)
+	return service.NewRuleService(db)
 }
 
-func NewUserService(store model.Storage) *service.UserService {
-	return service.NewUserService(store)
+func NewUserService(db *gorm.DB) *service.UserService {
+	return service.NewUserService(db)
+}
+
+func NewDB(lc fx.Lifecycle, cfg *config.Config) (*gorm.DB, error) {
+
+	var dia gorm.Dialector
+	switch cfg.Database.Driver {
+	case "sqlite3":
+		dia = sqlite.Open(cfg.Database.DSN)
+	case "mysql":
+		dia = mysql.Open(cfg.Database.DSN)
+	case "postgres":
+		dia = postgres.Open(cfg.Database.DSN)
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Database.Driver)
+	}
+	gc := &gorm.Config{
+		CreateBatchSize: 100,
+	}
+	if cfg.Debug {
+		gc.Logger = logger.Default.LogMode(logger.Warn) // logger.Default.LogMode(logger.Info)
+	} else {
+		gc.Logger = logger.Default.LogMode(logger.Error)
+	}
+	db, err := gorm.Open(dia, gc)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			return model.Migration(db)
+		},
+	})
+
+	return db, nil
 }

@@ -11,27 +11,28 @@ import (
 )
 
 // HandleMove handle delete object events
-func (e *SubHandler) HandleMove(ctx context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
-	if event, ok := ed.(*types.DeleteObject); !ok {
+func (e *SubHandler) HandleMove(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
+	if event, ok := ed.(*types.MoveEvent); !ok {
 		return nil
 	} else {
-		if err := e.storeDeleteObjectEvent(ctx, sid, er, event); err != nil {
+		if err := e.storeMoveEvent(er, event); err != nil {
 			zap.S().Errorf("failed to store %s event: %v", e.eventName(sid), err)
 		}
 	}
 	return nil
 }
 
-func (e *SubHandler) storeMoveEvent(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed *types.MoveEvent) error {
+func (e *SubHandler) storeMoveEvent(er *types.EventResult, ed *types.MoveEvent) error {
 	m := model.MoveEvent{
 		TransactionDigest: er.Id.TxDigest,
 		EventSeq:          er.Id.EventSeq,
 		Timestamp:         er.Timestamp,
-		PackageID:         ed.PackageID,
+		PackageID:         ed.PackageId,
 		TransactionModule: ed.TransactionModule,
-		Sender:            ed.Sender,
+		Sender:            types.HexToAddress(ed.Sender),
+		Fields:            ed.Fields,
 		Type:              ed.Type,
-		BCS:               ed.Contents,
+		BCS:               ed.Bcs,
 	}
-	return e.storeEvent(sid, &m)
+	return e.db.Create(&m).Error
 }

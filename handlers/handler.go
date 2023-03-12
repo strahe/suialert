@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
-	"time"
 
-	"github.com/pkg/errors"
+	"gorm.io/gorm"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/strahe/suialert/bots"
-	"github.com/strahe/suialert/model"
 	"github.com/strahe/suialert/types"
 	client "github.com/strahe/suialert/types"
 	"go.uber.org/zap"
@@ -24,36 +22,26 @@ type SubHandler struct {
 	eventNames map[types.SubscriptionID]string
 	lk         sync.Mutex
 
-	bot           bots.Bot
-	store         model.Storage
-	storeQueued   map[types.SubscriptionID][]model.Persistable
-	storeQueuedCh chan *eventPersist
-	storeLk       sync.Mutex
-	storeBatch    int
-	storeLimit    chan struct{}
-	done          chan struct{}
+	bot  bots.Bot
+	db   *gorm.DB
+	done chan struct{}
 }
 
-func NewSubHandler(bot bots.Bot, store model.Storage) *SubHandler {
+func NewSubHandler(bot bots.Bot, db *gorm.DB) *SubHandler {
 	hd := &SubHandler{
-		handlers:      map[client.SubscriptionID]handler{},
-		eventNames:    map[client.SubscriptionID]string{},
-		bot:           bot,
-		store:         store,
-		storeQueued:   map[client.SubscriptionID][]model.Persistable{},
-		storeQueuedCh: make(chan *eventPersist, 16),
-		storeBatch:    100, // todo: make configurable
-		storeLimit:    make(chan struct{}, 2),
-		done:          make(chan struct{}),
+		handlers:   map[client.SubscriptionID]handler{},
+		eventNames: map[client.SubscriptionID]string{},
+		bot:        bot,
+		db:         db,
+		done:       make(chan struct{}),
 	}
-	go hd.background(context.Background())
 	return hd
 }
 
 func (e *SubHandler) Close() error {
 	zap.S().Info("closing subscription handler")
 	close(e.done)
-	return e.storeAll(context.TODO())
+	return nil
 }
 
 func (e *SubHandler) AddSub(name string, id client.SubscriptionID, hd handler) {
@@ -146,7 +134,7 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 				return err
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
-		case types.EventTypeMoveEvent.Name():
+		case types.EventTypeMove.Name():
 			ed := types.MoveEvent{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
@@ -162,80 +150,4 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 		}
 	}
 	return nil
-}
-
-type eventPersist struct {
-	sid types.SubscriptionID
-	em  model.Persistable
-}
-
-func (e *SubHandler) storeEvent(sid types.SubscriptionID, em model.Persistable) error {
-	e.storeQueuedCh <- &eventPersist{sid: sid, em: em}
-	return nil
-}
-
-func (e *SubHandler) background(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-e.done:
-			// clean queue ?
-			for {
-				select {
-				case <-time.After(time.Second * 3):
-					return
-				case pe := <-e.storeQueuedCh:
-					if err := e.appendAndStore(ctx, pe); err != nil {
-						zap.S().Errorf("error persisting events: %s", err)
-					}
-				}
-			}
-
-		case pe := <-e.storeQueuedCh:
-			if err := e.appendAndStore(ctx, pe); err != nil {
-				zap.S().Errorf("error persisting events: %s", err)
-			}
-		}
-	}
-}
-
-func (e *SubHandler) appendAndStore(ctx context.Context, pe *eventPersist) error {
-	e.storeLk.Lock()
-	defer e.storeLk.Unlock()
-
-	e.storeQueued[pe.sid] = append(e.storeQueued[pe.sid], pe.em)
-
-	if len(e.storeQueued[pe.sid]) >= e.storeBatch {
-		if err := e.store.PersistBatch(ctx, e.storeQueued[pe.sid]...); err != nil {
-			return err
-		}
-		zap.L().Debug("persisting events",
-			zap.String("name", e.eventName(pe.sid)),
-			zap.Int("count", len(e.storeQueued[pe.sid])),
-		)
-		e.storeQueued[pe.sid] = []model.Persistable{}
-	}
-	return nil
-}
-
-func (e *SubHandler) storeAll(ctx context.Context) error {
-	e.storeLk.Lock()
-	defer e.storeLk.Unlock()
-
-	var err error
-	for sid, events := range e.storeQueued {
-		if len(events) == 0 {
-			continue
-		}
-		if err := e.store.PersistBatch(ctx, events...); err != nil {
-			err = errors.Wrapf(err, "failed to persist %s event to database", e.eventName(sid))
-			continue
-		}
-		zap.L().Debug("persisting events",
-			zap.String("name", e.eventName(sid)),
-			zap.Int("count", len(events)))
-		e.storeQueued[sid] = nil
-	}
-	return err
 }

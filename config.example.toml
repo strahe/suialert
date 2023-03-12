@@ -9,6 +9,6 @@ event_types = ["MoveEvent", "Publish", "CoinBalanceChange", "TransferObject", "N
 token = "discord bot token"
 
 [database]
-[database.postgres]
-url = "postgres://dbadmin:password@localhost:5432/db"
-upsert = false
+# https://gorm.io/docs/connecting_to_the_database.html
+driver = "sqlite3"
+dsn = "db.sqlite3"

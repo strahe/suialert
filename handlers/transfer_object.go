@@ -11,29 +11,29 @@ import (
 )
 
 // HandleTransferObject handle transfer object event
-func (e *SubHandler) HandleTransferObject(ctx context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
+func (e *SubHandler) HandleTransferObject(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
 	if event, ok := ed.(*types.TransferObject); !ok {
 		return nil
 	} else {
-		if err := e.storeTransferObjectEvent(ctx, sid, er, event); err != nil {
+		if err := e.storeTransferObjectEvent(er, event); err != nil {
 			zap.S().Errorf("failed to store %s event: %v", e.eventName(sid), err)
 		}
 	}
 	return nil
 }
 
-func (e *SubHandler) storeTransferObjectEvent(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed *types.TransferObject) error {
+func (e *SubHandler) storeTransferObjectEvent(er *types.EventResult, ed *types.TransferObject) error {
 	m := model.TransferObjectEvent{
 		TransactionDigest: er.Id.TxDigest,
 		EventSeq:          er.Id.EventSeq,
 		Timestamp:         er.Timestamp,
 		PackageID:         ed.PackageID,
 		TransactionModule: ed.TransactionModule,
-		Sender:            ed.Sender,
-		Recipient:         types.OwnerToString(ed.Recipient),
+		Sender:            types.HexToAddress(ed.Sender),
+		Recipient:         *ed.Recipient,
 		ObjectID:          ed.ObjectID,
 		ObjectType:        ed.ObjectType,
 		Version:           ed.Version,
 	}
-	return e.storeEvent(sid, &m)
+	return e.db.Create(&m).Error
 }

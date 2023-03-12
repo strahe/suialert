@@ -11,28 +11,28 @@ import (
 )
 
 // HandleMutateObject handle mutate object events
-func (e *SubHandler) HandleMutateObject(ctx context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
+func (e *SubHandler) HandleMutateObject(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
 	if event, ok := ed.(*types.MutateObject); !ok {
 		return nil
 	} else {
-		if err := e.storeMutateObjectEvent(ctx, sid, er, event); err != nil {
+		if err := e.storeMutateObjectEvent(er, event); err != nil {
 			zap.S().Errorf("failed to store %s event: %v", e.eventName(sid), err)
 		}
 	}
 	return nil
 }
 
-func (e *SubHandler) storeMutateObjectEvent(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed *types.MutateObject) error {
+func (e *SubHandler) storeMutateObjectEvent(er *types.EventResult, ed *types.MutateObject) error {
 	m := model.MutateObjectEvent{
 		TransactionDigest: er.Id.TxDigest,
 		EventSeq:          er.Id.EventSeq,
 		Timestamp:         er.Timestamp,
 		PackageID:         ed.PackageID,
 		TransactionModule: ed.TransactionModule,
-		Sender:            ed.Sender,
+		Sender:            types.HexToAddress(ed.Sender),
 		ObjectID:          ed.ObjectID,
 		ObjectType:        ed.ObjectType,
 		Version:           ed.Version,
 	}
-	return e.storeEvent(sid, &m)
+	return e.db.Create(&m).Error
 }

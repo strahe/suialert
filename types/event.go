@@ -2,13 +2,15 @@ package types
 
 import (
 	"bytes"
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"unicode"
 )
 
 const (
-	EventTypeMoveEvent         = EventType("MoveEvent")
+	EventTypeMove              = EventType("MoveEvent")
 	EventTypePublish           = EventType("Publish")
 	EventTypeCoinBalanceChange = EventType("CoinBalanceChange")
 	EventTypeTransferObject    = EventType("TransferObject")
@@ -26,7 +28,7 @@ func (e EventType) Name() string {
 
 func (e EventType) Description() string {
 	switch e {
-	case EventTypeMoveEvent:
+	case EventTypeMove:
 		return "Move-specific event"
 	case EventTypePublish:
 		return "Module published"
@@ -55,17 +57,18 @@ type StructTag struct {
 // Transaction level event
 // Move-specific event
 type MoveEvent struct {
-	PackageID         string          `json:"package_id"`
-	TransactionModule string          `json:"transaction_module"`
+	PackageId         string          `json:"packageId"`
+	TransactionModule string          `json:"transactionModule"`
 	Sender            string          `json:"sender"`
-	Type              json.RawMessage `json:"type"`
-	Contents          json.RawMessage `json:"contents"`
+	Type              string          `json:"type"`
+	Fields            json.RawMessage `json:"fields"`
+	Bcs               string          `json:"bcs"`
 }
 
 // Publish Module published
 type Publish struct {
 	Sender    string `json:"sender"`
-	PackageID string `json:"package_id"`
+	PackageID string `json:"packageId"`
 	Version   int64  `json:"version"`
 	Digest    string `json:"digest"`
 }
@@ -136,6 +139,24 @@ func (o *ObjectOwner) UnmarshalJSON(data []byte) error {
 	return errors.New("value not json")
 }
 
+// Scan scan value into Jsonb, implements sql.Scanner interface
+func (o *ObjectOwner) Scan(value interface{}) error {
+	raw, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
+	}
+
+	var t ObjectOwner
+	err := json.Unmarshal(raw, &t)
+	*o = t
+	return err
+}
+
+// Value return json value, implement driver.Valuer interface
+func (o ObjectOwner) Value() (driver.Value, error) {
+	return o.MarshalJSON()
+}
+
 func OwnerToString(o *ObjectOwner) string {
 	if o == nil {
 		return ""
@@ -199,3 +220,11 @@ type NewObject struct {
 	ObjectID          string       `json:"objectId"`
 	Version           int64        `json:"version"`
 }
+
+type CoinBalanceChangeType string
+
+const (
+	CoinBalanceChangeGas     CoinBalanceChangeType = "Gas"
+	CoinBalanceChangePay                           = "Pay"
+	CoinBalanceChangeReceive                       = "Receive"
+)

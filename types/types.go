@@ -1,9 +1,11 @@
 package types
 
 import (
+	"database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 
 	"golang.org/x/crypto/sha3"
@@ -180,4 +182,22 @@ func (a *Address) UnmarshalJSON(data []byte) error {
 	}
 	*a = HexToAddress(str)
 	return nil
+}
+
+// Scan scan value into Jsonb, implements sql.Scanner interface
+func (a *Address) Scan(value interface{}) error {
+	raw, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("Failed to unmarshal JSONB value:", value))
+	}
+
+	var t Address
+	err := json.Unmarshal(raw, &t)
+	*a = t
+	return err
+}
+
+// Value return json value, implement driver.Valuer interface
+func (a Address) Value() (driver.Value, error) {
+	return a.MarshalJSON()
 }

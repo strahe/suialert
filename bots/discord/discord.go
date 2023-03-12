@@ -92,7 +92,6 @@ func (b *Bot) addHandlers() {
 		case discordgo.InteractionMessageComponent:
 			switch i.MessageComponentData().CustomID {
 			case "select-alert":
-				b.handleSelectEventType(s, i)
 			}
 		case discordgo.InteractionModalSubmit:
 			data := i.ModalSubmitData()
@@ -124,22 +123,5 @@ func (b *Bot) findOrCreateUser(i *discordgo.InteractionCreate) (*model.User, err
 	if user == nil {
 		return nil, fmt.Errorf("failed to find user id")
 	}
-	u, err := b.userService.FindByDiscordID(user.ID)
-	switch err {
-	case nil:
-		return u, nil
-	case service.ErrNotFound:
-		u = &model.User{
-			DiscordID:   &user.ID,
-			Name:        fmt.Sprintf("%s#%s", user.Username, user.Discriminator),
-			DiscordInfo: user,
-			CreatedAt:   time.Now().Unix(),
-		}
-		if err := b.userService.Create(u); err != nil {
-			return nil, err
-		}
-		return u, nil
-	default:
-		return nil, err
-	}
+	return b.userService.FindOrCreateByDiscordUser(user)
 }
