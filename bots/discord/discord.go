@@ -91,7 +91,9 @@ func (b *Bot) addHandlers() {
 			}
 		case discordgo.InteractionMessageComponent:
 			switch i.MessageComponentData().CustomID {
-			case "select-alert":
+			case "select-event":
+				// todo: handle select event
+				zap.S().Infof("Received select event: %s", i.MessageComponentData().Values)
 			}
 		case discordgo.InteractionModalSubmit:
 			data := i.ModalSubmitData()

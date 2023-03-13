@@ -8,8 +8,7 @@ var DefaultConfig = Config{
 	Debug: false,
 
 	Sui: SuiConfig{
-		Endpoint:   DevNetRpcUrl,
-		EventTypes: []string{"MoveEvent", "Publish", "CoinBalanceChange", "TransferObject", "NewObject"},
+		Endpoint: DevNetRpcUrl,
 	},
 
 	Database: DatabaseConfig{

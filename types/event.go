@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"unicode"
 )
 
@@ -44,6 +45,26 @@ func (e EventType) Description() string {
 		return "Mutate object"
 	}
 	return "Unknown event"
+}
+
+func (e EventType) Emoji() string {
+	switch e {
+	case EventTypeMove:
+		return html.UnescapeString("&#127769;")
+	case EventTypePublish:
+		return html.UnescapeString("&#128226;")
+	case EventTypeCoinBalanceChange:
+		return html.UnescapeString("&#128176;")
+	case EventTypeTransferObject:
+		return html.UnescapeString("&#128177;")
+	case EventTypeNewObject:
+		return html.UnescapeString("&#127381;")
+	case EventTypeDeleteObject:
+		return html.UnescapeString("&#10060;")
+	case EventTypeMutateObject:
+		return html.UnescapeString("&#10071;")
+	}
+	return html.UnescapeString("&#10067;")
 }
 
 type StructTag struct {

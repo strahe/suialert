@@ -1,6 +1,6 @@
 debug = true
 
-[subscribe]
+[sui]
 event_types = ["MoveEvent", "Publish", "CoinBalanceChange", "TransferObject", "NewObject", "EpochChange", "Checkpoint"]
 
 [bots]
