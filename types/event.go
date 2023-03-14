@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"html"
-	"unicode"
 )
 
 const (
@@ -21,11 +20,6 @@ const (
 )
 
 type EventType string
-
-func (e EventType) Name() string {
-	r := []rune(e)
-	return string(append([]rune{unicode.ToLower(r[0])}, r[1:]...))
-}
 
 func (e EventType) Description() string {
 	switch e {

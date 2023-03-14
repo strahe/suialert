@@ -19,7 +19,7 @@ type handler func(context.Context, types.SubscriptionID, *types.EventResult, int
 
 type SubHandler struct {
 	handlers   map[types.SubscriptionID]handler
-	eventNames map[types.SubscriptionID]string
+	eventNames map[types.SubscriptionID]types.EventType
 	lk         sync.Mutex
 
 	bot  bots.Bot
@@ -30,7 +30,7 @@ type SubHandler struct {
 func NewSubHandler(bot bots.Bot, db *gorm.DB) *SubHandler {
 	hd := &SubHandler{
 		handlers:   map[client.SubscriptionID]handler{},
-		eventNames: map[client.SubscriptionID]string{},
+		eventNames: map[client.SubscriptionID]types.EventType{},
 		bot:        bot,
 		db:         db,
 		done:       make(chan struct{}),
@@ -44,7 +44,7 @@ func (e *SubHandler) Close() error {
 	return nil
 }
 
-func (e *SubHandler) AddSub(name string, id client.SubscriptionID, hd handler) {
+func (e *SubHandler) AddSub(name types.EventType, id client.SubscriptionID, hd handler) {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
@@ -78,7 +78,7 @@ func (e *SubHandler) SubscribeEvent(ctx context.Context, r jsonrpc.RawParams) er
 }
 
 func (e *SubHandler) eventName(id types.SubscriptionID) string {
-	return e.eventNames[id]
+	return string(e.eventNames[id])
 }
 
 func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *types.Subscription) error {
@@ -89,22 +89,22 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 
 	for name, raw := range er.Event {
 		var err error
-		switch name {
-		case types.EventTypeMutateObject.Name():
+		switch types.EventType(name) {
+		case types.EventTypeMutateObject:
 			ed := types.MutateObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
-		case types.EventTypeTransferObject.Name():
+		case types.EventTypeTransferObject:
 			ed := types.TransferObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
-		case types.EventTypePublish.Name():
+		case types.EventTypePublish:
 			ed := types.Publish{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
@@ -112,7 +112,7 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
 
-		case types.EventTypeCoinBalanceChange.Name():
+		case types.EventTypeCoinBalanceChange:
 			ed := types.CoinBalanceChange{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
@@ -120,21 +120,21 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
 
-		case types.EventTypeDeleteObject.Name():
+		case types.EventTypeDeleteObject:
 			ed := types.DeleteObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
-		case types.EventTypeNewObject.Name():
+		case types.EventTypeNewObject:
 			ed := types.NewObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
 			err = hd(ctx, p.Subscription, &er, &ed)
-		case types.EventTypeMove.Name():
+		case types.EventTypeMove:
 			ed := types.MoveEvent{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)

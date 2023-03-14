@@ -3,7 +3,6 @@ package discord
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/allegro/bigcache/v3"
@@ -64,18 +63,11 @@ func (b *Bot) Close(_ context.Context) error {
 	if b.session != nil {
 		return b.session.Close()
 	}
-
-	for id, name := range b.cmdIDs {
-		err := b.session.ApplicationCommandDelete(b.cfg.AppID, "", id)
-		if err != nil {
-			log.Fatalf("Cannot delete slash command %q: %v", name, err)
-		}
-	}
 	if b.cache != nil {
 		return b.cache.Close()
 	}
 
-	return nil
+	return b.removeCommands()
 }
 
 func (b *Bot) addHandlers() {
@@ -84,20 +76,19 @@ func (b *Bot) addHandlers() {
 		switch i.Type {
 		case discordgo.InteractionApplicationCommand, discordgo.InteractionApplicationCommandAutocomplete:
 			switch i.ApplicationCommandData().Name {
-			case "alert":
-				b.handleAlert(s, i)
+			case "add-alert":
+				b.handleAddAlert(s, i)
 			default:
 				zap.S().Errorf("Unknown slash command: %s", i.ApplicationCommandData().Name)
 			}
 		case discordgo.InteractionMessageComponent:
 			switch i.MessageComponentData().CustomID {
-			case "select-event":
-				// todo: handle select event
-				zap.S().Infof("Received select event: %s", i.MessageComponentData().Values)
+			case "selected-event":
+				b.handSelectedEvent(s, i)
 			}
 		case discordgo.InteractionModalSubmit:
-			data := i.ModalSubmitData()
-			zap.S().Infof("Modal submit: %s", data.CustomID)
+			// only one case for now
+			b.handAddAlertFormSubmitted(s, i)
 		default:
 			zap.S().Errorf("Unknown slash command: %s", i.Type)
 		}
@@ -115,6 +106,16 @@ func (b *Bot) createCommands() error {
 	return nil
 }
 
+func (b *Bot) removeCommands() error {
+	for id, name := range b.cmdIDs {
+		err := b.session.ApplicationCommandDelete(b.session.State.User.ID, "", id)
+		if err != nil {
+			return fmt.Errorf("failed to delete slash command %q: %s", name, err)
+		}
+	}
+	return nil
+}
+
 func (b *Bot) findOrCreateUser(i *discordgo.InteractionCreate) (*model.User, error) {
 	var user *discordgo.User
 	if i.User != nil {
@@ -126,4 +127,11 @@ func (b *Bot) findOrCreateUser(i *discordgo.InteractionCreate) (*model.User, err
 		return nil, fmt.Errorf("failed to find user id")
 	}
 	return b.userService.FindOrCreateByDiscordUser(user)
+}
+
+func (b *Bot) options() []discordgo.RequestOption {
+	return []discordgo.RequestOption{
+		discordgo.WithRestRetries(3),
+		discordgo.WithRestRetries(3),
+	}
 }

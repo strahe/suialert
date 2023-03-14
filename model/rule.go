@@ -22,10 +22,12 @@ func (*Rule) TableName() string {
 	return "rules"
 }
 
+// AfterCreate todo: not Affected
 func (r *Rule) AfterCreate(tx *gorm.DB) (err error) {
 	return tx.Model(r.User).Update("rule_count", gorm.Expr("rule_count + ?", 1)).Error
 }
 
+// AfterDelete todo: not Affected
 func (r *Rule) AfterDelete(tx *gorm.DB) (err error) {
 	return tx.Model(r.User).Update("rule_count", gorm.Expr("rule_count - ?", 1)).Error
 }

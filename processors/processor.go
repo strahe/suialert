@@ -51,7 +51,7 @@ func (p *Processor) unsubscribeEvents(ctx context.Context) error {
 
 	for event, id := range p.subIDs {
 		zap.L().Info("unsubscribing",
-			zap.String("event", event.Name()),
+			zap.String("event", string(event)),
 			zap.Uint64("id", id),
 		)
 
@@ -63,8 +63,8 @@ func (p *Processor) unsubscribeEvents(ctx context.Context) error {
 		} else {
 			delete(p.subIDs, event)
 			zap.L().Info("unsubscribed",
-				zap.String("event", event.Name()), //
-				zap.Uint64("id", id),              //
+				zap.String("event", string(event)), //
+				zap.Uint64("id", id),               //
 			)
 		}
 	}
@@ -92,7 +92,7 @@ func (p *Processor) SubscribeEventType(ctx context.Context, eventType types.Even
 	defer p.lk.Unlock()
 
 	if sid, ok := p.subIDs[eventType]; ok {
-		zap.S().Infof("already subscribed to event type %s: %d", eventType.Name(), sid)
+		zap.S().Infof("already subscribed to event type %s: %d", eventType, sid)
 		return nil
 	}
 
@@ -101,33 +101,33 @@ func (p *Processor) SubscribeEventType(ctx context.Context, eventType types.Even
 	}
 	sid, err := p.rpcClient.SubscribeEvent(ctx, q)
 	if err != nil {
-		return fmt.Errorf("failed to subscribe %s: %s", eventType.Name(), err)
+		return fmt.Errorf("failed to subscribe %s: %s", eventType, err)
 	}
 
 	p.subIDs[eventType] = sid
 	zap.L().Info("subscribed",
-		zap.String("event", eventType.Name()),
+		zap.String("event", string(eventType)),
 		zap.Uint64("id", sid),
 		zap.Time("start", time.Now()),
 	)
 
 	switch eventType {
 	case types.EventTypeCoinBalanceChange:
-		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleBalanceChange)
+		p.hd.AddSub(eventType, types.SubscriptionID(sid), p.hd.HandleBalanceChange)
 	case types.EventTypePublish:
-		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandlePublish)
+		p.hd.AddSub(eventType, types.SubscriptionID(sid), p.hd.HandlePublish)
 	case types.EventTypeMove:
-		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleMove)
+		p.hd.AddSub(eventType, types.SubscriptionID(sid), p.hd.HandleMove)
 	case types.EventTypeNewObject:
-		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleNewObject)
+		p.hd.AddSub(eventType, types.SubscriptionID(sid), p.hd.HandleNewObject)
 	case types.EventTypeMutateObject:
-		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleMutateObject)
+		p.hd.AddSub(eventType, types.SubscriptionID(sid), p.hd.HandleMutateObject)
 	case types.EventTypeDeleteObject:
-		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleDeleteObject)
+		p.hd.AddSub(eventType, types.SubscriptionID(sid), p.hd.HandleDeleteObject)
 	case types.EventTypeTransferObject:
-		p.hd.AddSub(eventType.Name(), types.SubscriptionID(sid), p.hd.HandleTransferObject)
+		p.hd.AddSub(eventType, types.SubscriptionID(sid), p.hd.HandleTransferObject)
 	default:
-		err = fmt.Errorf("no handler for event: %s", eventType.Name())
+		err = fmt.Errorf("no handler for event: %s", eventType)
 	}
 	return err
 }
