@@ -14,7 +14,7 @@ type User struct {
 	DiscordInfo  *discordgo.User `json:"discord_info" gorm:"serializer:json"`
 	TelegramID   *int64          `json:"telegram_id" gorm:"index"`
 	TelegramInfo *telebot.User   `json:"telegram_info" gorm:"serializer:json"`
-	RuleCount    int             `json:"rule_count" gorm:"->"` // read only
+	RuleCount    int             `json:"rule_count" gorm:"not null"`
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`
 }
