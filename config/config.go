@@ -4,7 +4,7 @@ type Config struct {
 	// Enable Debug model
 	Debug bool `yaml:"debug" json:"debug" mapstructure:"debug"`
 
-	Sui SuiConfig `yaml:"subscribe" json:"subscribe" mapstructure:"subscribe"`
+	Sui SuiConfig `yaml:"sui" json:"sui" mapstructure:"sui"`
 
 	Bots BotsConfig `yaml:"bots" json:"bots" mapstructure:"bots"`
 

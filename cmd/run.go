@@ -24,6 +24,7 @@ func (c *command) initRunCmd() {
 				fx.Provide(NewProcessor),
 				fx.Provide(NewHandler),
 				fx.Provide(NewBot),
+				fx.Provide(NewEngine),
 				fx.Invoke(func(cfg *processors.Processor) {}),
 			)
 			app.Run()

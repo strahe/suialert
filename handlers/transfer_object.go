@@ -5,18 +5,16 @@ import (
 
 	"github.com/strahe/suialert/model"
 
-	"go.uber.org/zap"
-
 	"github.com/strahe/suialert/types"
 )
 
 // HandleTransferObject handle transfer object event
-func (e *SubHandler) HandleTransferObject(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
+func (e *SubHandler) HandleTransferObject(_ context.Context, er *types.EventResult, ed interface{}) error {
 	if event, ok := ed.(*types.TransferObject); !ok {
 		return nil
 	} else {
 		if err := e.storeTransferObjectEvent(er, event); err != nil {
-			zap.S().Errorf("failed to store %s event: %v", e.eventName(sid), err)
+			return err
 		}
 	}
 	return nil

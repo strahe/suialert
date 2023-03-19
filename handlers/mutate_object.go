@@ -5,18 +5,16 @@ import (
 
 	"github.com/strahe/suialert/model"
 
-	"go.uber.org/zap"
-
 	"github.com/strahe/suialert/types"
 )
 
 // HandleMutateObject handle mutate object events
-func (e *SubHandler) HandleMutateObject(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
+func (e *SubHandler) HandleMutateObject(_ context.Context, er *types.EventResult, ed interface{}) error {
 	if event, ok := ed.(*types.MutateObject); !ok {
 		return nil
 	} else {
 		if err := e.storeMutateObjectEvent(er, event); err != nil {
-			zap.S().Errorf("failed to store %s event: %v", e.eventName(sid), err)
+			return err
 		}
 	}
 	return nil

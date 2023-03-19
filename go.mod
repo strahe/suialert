@@ -16,6 +16,7 @@ require (
 	go.uber.org/fx v1.19.2
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.6.0
+	golang.org/x/sync v0.1.0
 	gopkg.in/telebot.v3 v3.1.2
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/driver/postgres v1.5.0

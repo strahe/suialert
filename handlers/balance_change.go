@@ -3,24 +3,36 @@ package handlers
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/pgcontrib/bigint"
 	"github.com/strahe/suialert/model"
 	"github.com/strahe/suialert/types"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 // HandleBalanceChange handle the balance change events.
-func (e *SubHandler) HandleBalanceChange(ctx context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
+func (e *SubHandler) HandleBalanceChange(ctx context.Context, er *types.EventResult, ed interface{}) error {
+	start := time.Now()
+	defer func() {
+		zap.L().Debug("HandleBalanceChange",
+			zap.Duration("took", time.Since(start)),
+		)
+	}()
 	if event, ok := ed.(*types.CoinBalanceChange); !ok {
 		zap.S().Errorf("invalid coin balance change event type: %s", reflect.TypeOf(ed))
 		return nil
 	} else {
-		if err := e.storeBalanceChangeEvent(ctx, er, event); err != nil {
-			zap.S().Errorf("failed to store %s event: %v", e.eventName(sid), err)
-		}
+		grp, ctx := errgroup.WithContext(ctx)
+		grp.Go(func() error {
+			return e.eng.ExecuteCoinBalanceChange(ctx, event)
+		})
+		grp.Go(func() error {
+			return e.storeBalanceChangeEvent(ctx, er, event)
+		})
+		return grp.Wait()
 	}
-	return nil
 }
 
 func (e *SubHandler) storeBalanceChangeEvent(_ context.Context, er *types.EventResult, ed *types.CoinBalanceChange) error {

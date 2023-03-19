@@ -5,18 +5,16 @@ import (
 
 	"github.com/strahe/suialert/model"
 
-	"go.uber.org/zap"
-
 	"github.com/strahe/suialert/types"
 )
 
 // HandlePublish handle publish event
-func (e *SubHandler) HandlePublish(_ context.Context, sid types.SubscriptionID, er *types.EventResult, ed interface{}) error {
+func (e *SubHandler) HandlePublish(_ context.Context, er *types.EventResult, ed interface{}) error {
 	if event, ok := ed.(*types.Publish); !ok {
 		return nil
 	} else {
 		if err := e.storePublishEvent(er, event); err != nil {
-			zap.S().Errorf("failed to store %s event: %v", e.eventName(sid), err)
+			return err
 		}
 	}
 	return nil

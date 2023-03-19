@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/strahe/suialert/rule"
 	"gorm.io/gorm"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -15,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type handler func(context.Context, types.SubscriptionID, *types.EventResult, interface{}) error
+type handler func(context.Context, *types.EventResult, interface{}) error
 
 type SubHandler struct {
 	handlers   map[types.SubscriptionID]handler
@@ -24,15 +25,17 @@ type SubHandler struct {
 
 	bot  bots.Bot
 	db   *gorm.DB
+	eng  *rule.Engine
 	done chan struct{}
 }
 
-func NewSubHandler(bot bots.Bot, db *gorm.DB) *SubHandler {
+func NewSubHandler(bot bots.Bot, db *gorm.DB, eng *rule.Engine) *SubHandler {
 	hd := &SubHandler{
 		handlers:   map[client.SubscriptionID]handler{},
 		eventNames: map[client.SubscriptionID]types.EventType{},
 		bot:        bot,
 		db:         db,
+		eng:        eng,
 		done:       make(chan struct{}),
 	}
 	return hd
@@ -89,28 +92,28 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 
 	for name, raw := range er.Event {
 		var err error
-		switch types.EventType(name) {
+		switch types.EventFromSui(name) {
 		case types.EventTypeMutateObject:
 			ed := types.MutateObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
-			err = hd(ctx, p.Subscription, &er, &ed)
+			err = hd(ctx, &er, &ed)
 		case types.EventTypeTransferObject:
 			ed := types.TransferObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
-			err = hd(ctx, p.Subscription, &er, &ed)
+			err = hd(ctx, &er, &ed)
 		case types.EventTypePublish:
 			ed := types.Publish{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
-			err = hd(ctx, p.Subscription, &er, &ed)
+			err = hd(ctx, &er, &ed)
 
 		case types.EventTypeCoinBalanceChange:
 			ed := types.CoinBalanceChange{}
@@ -118,7 +121,7 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
-			err = hd(ctx, p.Subscription, &er, &ed)
+			err = hd(ctx, &er, &ed)
 
 		case types.EventTypeDeleteObject:
 			ed := types.DeleteObject{}
@@ -126,26 +129,29 @@ func (e *SubHandler) processSubscription(ctx context.Context, hd handler, p *typ
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
-			err = hd(ctx, p.Subscription, &er, &ed)
+			err = hd(ctx, &er, &ed)
 		case types.EventTypeNewObject:
 			ed := types.NewObject{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
-			err = hd(ctx, p.Subscription, &er, &ed)
+			err = hd(ctx, &er, &ed)
 		case types.EventTypeMove:
 			ed := types.MoveEvent{}
 			if err := json.Unmarshal(raw, &ed); err != nil {
 				zap.S().Errorf("error unmarshalling %s event: %s", e.eventName(p.Subscription), err)
 				return err
 			}
-			err = hd(ctx, p.Subscription, &er, &ed)
+			err = hd(ctx, &er, &ed)
 		default:
 			zap.S().Warnf("unknown event name %s in %s handler", e.eventName(p.Subscription), name)
 			continue
 		}
 		if err != nil {
+			zap.L().Error("error processing event",
+				zap.String("name", e.eventName(p.Subscription)),
+				zap.Error(err))
 			return err
 		}
 	}

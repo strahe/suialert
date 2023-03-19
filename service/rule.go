@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -40,4 +41,22 @@ func (s *RuleService) Update(rule *model.Rule) error {
 		return fmt.Errorf("rule is nil")
 	}
 	return s.db.Select("Condition").Updates(rule).Error
+}
+
+func (s *RuleService) FindByAddress(addr types.Address) ([]model.Rule, error) {
+	var rules []model.Rule
+	if err := s.db.Where("address = ?", addr).Find(&rules).Error; err == gorm.ErrRecordNotFound {
+		return nil, ErrNotFound
+	}
+	return rules, nil
+}
+
+// FindAll returns all rules
+// todo: pagination
+func (s *RuleService) FindAll(ctx context.Context) ([]model.Rule, error) {
+	var rules []model.Rule
+	if err := s.db.WithContext(ctx).Find(&rules).Error; err == gorm.ErrRecordNotFound {
+		return nil, ErrNotFound
+	}
+	return rules, nil
 }

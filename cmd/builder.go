@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/strahe/suialert/rule"
 	"github.com/strahe/suialert/service"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -29,6 +30,19 @@ func (c *command) Config() (*config.Config, error) {
 	return &cfg, nil
 }
 
+func NewEngine(lc fx.Lifecycle, ruleService *service.RuleService) (*rule.Engine, error) {
+	eng, err := rule.NewEngine(ruleService)
+	if err != nil {
+		return nil, err
+	}
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return eng.LoadRules(ctx)
+		},
+	})
+	return eng, nil
+}
+
 func NewBot(lc fx.Lifecycle, cfg *config.Config, userService *service.UserService, ruleService *service.RuleService) (bots.Bot, error) {
 	bot, err := discord.NewDiscord(cfg.Bots.Discord, userService, ruleService)
 	if err != nil {
@@ -45,8 +59,8 @@ func NewBot(lc fx.Lifecycle, cfg *config.Config, userService *service.UserServic
 	return bot, nil
 }
 
-func NewHandler(lc fx.Lifecycle, bot bots.Bot, db *gorm.DB) *handlers.SubHandler {
-	hd := handlers.NewSubHandler(bot, db)
+func NewHandler(lc fx.Lifecycle, bot bots.Bot, db *gorm.DB, eng *rule.Engine) *handlers.SubHandler {
+	hd := handlers.NewSubHandler(bot, db, eng)
 	lc.Append(fx.Hook{
 		OnStop: func(context.Context) error {
 			return hd.Close()
@@ -87,7 +101,6 @@ func NewPRCClient(lc fx.Lifecycle, cfg *config.Config, hd *handlers.SubHandler) 
 }
 
 func NewRuleService(db *gorm.DB) *service.RuleService {
-
 	return service.NewRuleService(db)
 }
 
@@ -96,7 +109,6 @@ func NewUserService(db *gorm.DB) *service.UserService {
 }
 
 func NewDB(lc fx.Lifecycle, cfg *config.Config) (*gorm.DB, error) {
-
 	var dia gorm.Dialector
 	switch cfg.Database.Driver {
 	case "sqlite3":
@@ -124,6 +136,14 @@ func NewDB(lc fx.Lifecycle, cfg *config.Config) (*gorm.DB, error) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			return model.Migration(db)
+		},
+		OnStop: func(context.Context) error {
+			d, err := db.DB()
+			if err != nil {
+				return err
+			}
+			// maybe not necessary
+			return d.Close()
 		},
 	})
 

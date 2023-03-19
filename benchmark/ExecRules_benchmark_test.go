@@ -85,7 +85,7 @@ func generateRules(count int) func() {
 	return func() {
 		var rb bytes.Buffer
 		for i := 1; i <= count; i++ {
-			_, err := rb.WriteString(MakeRule(i))
+			_, err := rb.WriteString(MakeRule("A", i))
 			if err != nil {
 				return
 			}

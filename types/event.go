@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"strings"
 )
 
 const (
@@ -39,6 +40,10 @@ func (e EventType) Description() string {
 		return "Mutate object"
 	}
 	return "Unknown event"
+}
+
+func EventFromSui(e string) EventType {
+	return EventType(strings.ToUpper(e[:1]) + e[1:])
 }
 
 func (e EventType) Emoji() string {
